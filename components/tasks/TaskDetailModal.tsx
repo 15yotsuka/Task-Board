@@ -16,7 +16,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { useThemeColors } from '../../lib/useTheme';
 import { BottomSheet } from '../common/BottomSheet';
 import { formatFullDate } from '../../lib/dateUtils';
-import { priorityColors, radius, spacing } from '../../lib/theme';
+import { priorityColors, radius, spacing, typography, withAlpha } from '../../lib/theme';
 
 interface Props {
   todo: Todo | null;
@@ -122,7 +122,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
                 },
               ]}
             >
-              <Text style={{ color: pc.text, fontWeight: '600', fontSize: 13 }}>{opt.label}</Text>
+              <Text style={[styles.priorityChipText, { color: pc.text }]}>{opt.label}</Text>
             </Pressable>
           );
         })}
@@ -152,18 +152,18 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
         {activeTab === 0 && (
           <>
             {/* Due date */}
-            <Text style={[styles.label, { color: theme.secondaryText }]}>締切日時</Text>
+            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>締切日時</Text>
             <Pressable
               onPress={() => setShowDatePicker(true)}
               style={[styles.dateButton, { borderColor: theme.border, backgroundColor: theme.pageBg }]}
             >
-              <Text style={{ color: dueDate ? theme.text : theme.secondaryText, fontSize: 15 }}>
+              <Text style={[styles.dateText, { color: dueDate ? theme.text : theme.secondaryText }]}>
                 {dueDate ? dueDate.toLocaleString('ja-JP') : '日時を選択'}
               </Text>
             </Pressable>
             {dueDate && (
-              <Pressable onPress={() => setDueDate(null)}>
-                <Text style={{ color: theme.danger, fontSize: 13, marginTop: 4 }}>日時をクリア</Text>
+              <Pressable onPress={() => setDueDate(null)} hitSlop={spacing.sm} style={styles.clearButton}>
+                <Text style={[styles.clearText, { color: theme.danger }]}>日時をクリア</Text>
               </Pressable>
             )}
             {showDatePicker && (
@@ -180,7 +180,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
             )}
 
             {/* Category */}
-            <Text style={[styles.label, { color: theme.secondaryText }]}>カテゴリ</Text>
+            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>カテゴリ</Text>
             <View style={styles.categoryRow}>
               <Pressable
                 onPress={() => setCategoryId(null)}
@@ -192,7 +192,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
                   },
                 ]}
               >
-                <Text style={{ color: theme.text, fontSize: 13 }}>なし</Text>
+                <Text style={[styles.categoryChipText, { color: theme.text }]}>なし</Text>
               </Pressable>
               {categories.map((cat) => (
                 <Pressable
@@ -201,19 +201,19 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
                   style={[
                     styles.categoryChip,
                     {
-                      backgroundColor: categoryId === cat.id ? cat.color + '1A' : 'transparent',
+                      backgroundColor: categoryId === cat.id ? withAlpha(cat.color, 0.1) : 'transparent',
                       borderColor: categoryId === cat.id ? cat.color : theme.border,
                     },
                   ]}
                 >
                   <View style={[styles.catDot, { backgroundColor: cat.color }]} />
-                  <Text style={{ color: theme.text, fontSize: 13 }}>{cat.name}</Text>
+                  <Text style={[styles.categoryChipText, { color: theme.text }]}>{cat.name}</Text>
                 </Pressable>
               ))}
             </View>
 
             {/* Memo */}
-            <Text style={[styles.label, { color: theme.secondaryText }]}>メモ</Text>
+            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>メモ</Text>
             <TextInput
               style={[styles.memoInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.pageBg }]}
               value={memo}
@@ -227,7 +227,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
 
         {activeTab === 1 && (
           <>
-            <Text style={[styles.label, { color: theme.secondaryText }]}>通知タイミング</Text>
+            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>通知タイミング</Text>
             <View style={styles.notifRow}>
               <TextInput
                 style={[styles.notifInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.pageBg }]}
@@ -237,9 +237,9 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
                 placeholder="30"
                 placeholderTextColor={theme.secondaryText}
               />
-              <Text style={{ color: theme.text, fontSize: 15 }}>分前に通知</Text>
+              <Text style={[styles.notifUnit, { color: theme.text }]}>分前に通知</Text>
             </View>
-            <Text style={{ color: theme.secondaryText, fontSize: 12, marginTop: 8 }}>
+            <Text style={[styles.notifHint, { color: theme.secondaryText }]}>
               締切日時が設定されている場合のみ有効です。{'\n'}
               例: 30 = 30分前、60 = 1時間前、1440 = 1日前
             </Text>
@@ -248,11 +248,11 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
 
         {activeTab === 2 && (
           <>
-            <Text style={[styles.label, { color: theme.secondaryText }]}>作成日時</Text>
-            <Text style={{ color: theme.text, fontSize: 15 }}>{formatFullDate(todo.createdAt)}</Text>
+            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>作成日時</Text>
+            <Text style={[styles.detailText, { color: theme.text }]}>{formatFullDate(todo.createdAt)}</Text>
 
-            <Text style={[styles.label, { color: theme.secondaryText }]}>更新日時</Text>
-            <Text style={{ color: theme.text, fontSize: 15 }}>{formatFullDate(todo.updatedAt)}</Text>
+            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>更新日時</Text>
+            <Text style={[styles.detailText, { color: theme.text }]}>{formatFullDate(todo.updatedAt)}</Text>
           </>
         )}
       </View>
@@ -265,7 +265,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
         >
           <Text style={styles.saveText}>保存</Text>
         </Pressable>
-        <Pressable onPress={handleDelete}>
+        <Pressable onPress={handleDelete} hitSlop={spacing.md} style={styles.deleteButton}>
           <Text style={[styles.deleteText, { color: theme.danger }]}>削除</Text>
         </Pressable>
       </View>
@@ -275,35 +275,38 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
 
 const styles = StyleSheet.create({
   titleInput: {
-    fontSize: 20,
-    fontWeight: '700',
+    ...typography.heading,
     borderBottomWidth: 1,
-    paddingBottom: 8,
-    marginBottom: 12,
+    paddingBottom: spacing.sm,
+    marginBottom: spacing.md - 4,
   },
   priorityRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   priorityChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
     borderRadius: radius.button,
+  },
+  priorityChipText: {
+    ...typography.caption,
+    fontWeight: '600',
   },
   tabBar: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
-    paddingBottom: 8,
+    paddingBottom: spacing.sm,
   },
   tabText: {
+    ...typography.bodyMedium,
     fontSize: 14,
-    fontWeight: '600',
   },
   tabIndicator: {
     position: 'absolute',
@@ -315,42 +318,53 @@ const styles = StyleSheet.create({
   tabContent: {
     minHeight: 200,
   },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginTop: 16,
-    marginBottom: 8,
+  fieldLabel: {
+    ...typography.label,
+    fontSize: 12,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
   },
   dateButton: {
     borderWidth: 1,
     borderRadius: radius.input,
-    padding: 14,
+    padding: spacing.md - 2,
+  },
+  dateText: {
+    ...typography.body,
+  },
+  clearButton: {
+    marginTop: spacing.xs,
+  },
+  clearText: {
+    ...typography.caption,
   },
   categoryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    gap: spacing.xs + 2,
+    paddingHorizontal: spacing.md - 4,
+    paddingVertical: spacing.xs + 2,
     borderRadius: radius.button,
     borderWidth: 1,
   },
+  categoryChipText: {
+    ...typography.caption,
+  },
   catDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: spacing.sm,
+    height: spacing.sm,
+    borderRadius: spacing.xs,
   },
   memoInput: {
     borderWidth: 1,
     borderRadius: radius.input,
-    padding: 14,
+    padding: spacing.md - 2,
+    ...typography.body,
     fontSize: 16,
     minHeight: 80,
     textAlignVertical: 'top',
@@ -358,34 +372,51 @@ const styles = StyleSheet.create({
   notifRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   notifInput: {
     borderWidth: 1,
     borderRadius: radius.input,
-    padding: 14,
+    padding: spacing.md - 2,
     fontSize: 16,
     width: 80,
     textAlign: 'center',
   },
+  notifUnit: {
+    ...typography.body,
+  },
+  notifHint: {
+    ...typography.caption,
+    marginTop: spacing.sm,
+    lineHeight: 18,
+  },
+  detailText: {
+    ...typography.body,
+  },
   footer: {
-    marginTop: 24,
-    gap: 12,
+    marginTop: spacing.lg,
+    gap: spacing.md - 4,
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   saveButton: {
     width: '100%',
     borderRadius: radius.button,
-    paddingVertical: 14,
+    paddingVertical: spacing.md - 2,
     alignItems: 'center',
   },
   saveText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    ...typography.body,
     fontWeight: '600',
+    fontSize: 16,
+  },
+  deleteButton: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
   },
   deleteText: {
+    ...typography.body,
     fontSize: 14,
     fontWeight: '600',
   },

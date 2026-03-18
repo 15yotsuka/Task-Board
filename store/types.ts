@@ -37,10 +37,4 @@ export interface AppState {
   addCategory: (category: Omit<Category, 'id' | 'userId' | 'createdAt'>) => void;
   updateCategory: (id: string, updates: Partial<Category>) => void;
   deleteCategory: (id: string) => void;
-
-  loadFromSupabase: () => Promise<void>;
-  syncTodoToSupabase: (todo: Todo) => Promise<void>;
-  syncCategoryToSupabase: (category: Category) => Promise<void>;
-  deleteTodoFromSupabase: (id: string) => Promise<void>;
-  deleteCategoryFromSupabase: (id: string) => Promise<void>;
 }

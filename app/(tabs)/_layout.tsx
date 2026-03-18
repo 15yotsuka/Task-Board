@@ -1,16 +1,16 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../lib/useTheme';
+import { spacing, typography } from '../../lib/theme';
 
-function TabIcon({ name, focused, color }: { name: string; focused: boolean; color: string }) {
-  const icons: Record<string, string> = {
-    index: focused ? '🏠' : '🏡',
-    tasks: focused ? '📋' : '📝',
-    calendar: focused ? '📆' : '📅',
-  };
-  return <Text style={{ fontSize: 22 }}>{icons[name] ?? '📌'}</Text>;
-}
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
+
+const TAB_ICONS: Record<string, { active: IoniconsName; inactive: IoniconsName }> = {
+  index: { active: 'home', inactive: 'home-outline' },
+  tasks: { active: 'checkmark-circle', inactive: 'checkmark-circle-outline' },
+  calendar: { active: 'calendar', inactive: 'calendar-outline' },
+};
 
 export default function TabLayout() {
   const theme = useThemeColors();
@@ -23,35 +23,50 @@ export default function TabLayout() {
           backgroundColor: theme.cardBg,
           borderTopColor: theme.border,
           height: 64,
-          paddingBottom: 8,
+          paddingBottom: spacing.sm,
         },
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.secondaryText,
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '600',
-        },
+        tabBarLabelStyle: typography.tab,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'ホーム',
-          tabBarIcon: ({ focused, color }) => <TabIcon name="index" focused={focused} color={color} />,
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name={focused ? TAB_ICONS.index.active : TAB_ICONS.index.inactive}
+              size={24}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="tasks"
         options={{
           title: 'タスク',
-          tabBarIcon: ({ focused, color }) => <TabIcon name="tasks" focused={focused} color={color} />,
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name={focused ? TAB_ICONS.tasks.active : TAB_ICONS.tasks.inactive}
+              size={24}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="calendar"
         options={{
           title: 'カレンダー',
-          tabBarIcon: ({ focused, color }) => <TabIcon name="calendar" focused={focused} color={color} />,
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name={focused ? TAB_ICONS.calendar.active : TAB_ICONS.calendar.inactive}
+              size={24}
+              color={color}
+            />
+          ),
         }}
       />
     </Tabs>

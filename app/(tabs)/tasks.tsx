@@ -7,6 +7,7 @@ import {
   StyleSheet,
   SectionList,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../store/useAppStore';
@@ -16,8 +17,7 @@ import { TaskCard } from '../../components/tasks/TaskCard';
 import { AddTaskForm } from '../../components/tasks/AddTaskForm';
 import { TaskDetailModal } from '../../components/tasks/TaskDetailModal';
 import { Todo } from '../../store/types';
-import { radius, spacing } from '../../lib/theme';
-import { parseISO, isValid } from 'date-fns';
+import { radius, spacing, typography, shadow, withAlpha } from '../../lib/theme';
 
 type SortMode = 'dueDate' | 'manual' | 'priority' | 'combined';
 type FilterMode = 'incomplete' | 'completed' | 'all';
@@ -54,19 +54,16 @@ export default function TasksScreen() {
   const filteredAndSorted = useMemo(() => {
     let filtered = [...todos];
 
-    // Filter by completion status
     if (filterMode === 'incomplete') {
       filtered = filtered.filter((t) => !t.isCompleted);
     } else if (filterMode === 'completed') {
       filtered = filtered.filter((t) => t.isCompleted);
     }
 
-    // Filter by category
     if (filterCategoryId) {
       filtered = filtered.filter((t) => t.categoryId === filterCategoryId);
     }
 
-    // Sort
     filtered.sort((a, b) => {
       if (sortMode === 'dueDate') {
         if (!a.dueDate && !b.dueDate) return 0;
@@ -94,7 +91,6 @@ export default function TasksScreen() {
     return filtered;
   }, [todos, sortMode, filterMode, filterCategoryId]);
 
-  // Group into sections
   const sections = useMemo(() => {
     const groups: Record<Section, Todo[]> = {
       overdue: [], today: [], thisWeek: [], thisMonth: [], later: [], unset: [], completed: [],
@@ -136,7 +132,7 @@ export default function TasksScreen() {
               },
             ]}
           >
-            <Text style={{ color: sortMode === opt.key ? '#FFF' : theme.text, fontSize: 13, fontWeight: '600' }}>
+            <Text style={[styles.chipText, { color: sortMode === opt.key ? '#FFF' : theme.text }]}>
               {opt.label}
             </Text>
           </Pressable>
@@ -157,7 +153,7 @@ export default function TasksScreen() {
               },
             ]}
           >
-            <Text style={{ color: filterMode === opt.key ? theme.primary : theme.text, fontSize: 13 }}>
+            <Text style={[styles.chipText, { color: filterMode === opt.key ? theme.primary : theme.text }]}>
               {opt.label}
             </Text>
           </Pressable>
@@ -169,13 +165,13 @@ export default function TasksScreen() {
             style={[
               styles.chip,
               {
-                backgroundColor: filterCategoryId === cat.id ? cat.color + '1A' : theme.cardBg,
+                backgroundColor: filterCategoryId === cat.id ? withAlpha(cat.color, 0.1) : theme.cardBg,
                 borderColor: filterCategoryId === cat.id ? cat.color : theme.border,
               },
             ]}
           >
             <View style={[styles.catDot, { backgroundColor: cat.color }]} />
-            <Text style={{ color: theme.text, fontSize: 13 }}>{cat.name}</Text>
+            <Text style={[styles.chipText, { color: theme.text }]}>{cat.name}</Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -190,7 +186,10 @@ export default function TasksScreen() {
         renderSectionHeader={({ section: { title } }) => (
           <Text style={[styles.sectionHeader, { color: theme.secondaryText }]}>{title}</Text>
         )}
-        contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{
+          paddingHorizontal: spacing.md,
+          paddingBottom: insets.bottom + spacing.tabBarOffset + spacing.xl,
+        }}
         stickySectionHeadersEnabled={false}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: theme.secondaryText }]}>タスクがありません</Text>
@@ -200,9 +199,13 @@ export default function TasksScreen() {
       {/* FAB */}
       <Pressable
         onPress={() => setShowAddForm(true)}
-        style={[styles.fab, { backgroundColor: theme.primary, bottom: insets.bottom + 80 }]}
+        style={[
+          styles.fab,
+          { backgroundColor: theme.primary, bottom: insets.bottom + spacing.tabBarOffset },
+          shadow.lg,
+        ]}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Ionicons name="add" size={28} color="#FFFFFF" />
       </Pressable>
 
       <AddTaskForm visible={showAddForm} onClose={() => setShowAddForm(false)} />
@@ -220,63 +223,52 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pageTitle: {
-    fontSize: 28,
-    fontWeight: '800',
+    ...typography.title,
     paddingHorizontal: spacing.md,
-    marginBottom: 8,
-    marginTop: 16,
+    marginBottom: spacing.sm,
+    marginTop: spacing.md,
   },
   chipScroll: {
     paddingHorizontal: spacing.md,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
     flexGrow: 0,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md - 4,
+    paddingVertical: spacing.xs + 2,
     borderRadius: radius.pill,
     borderWidth: 1,
-    marginRight: 8,
+    marginRight: spacing.sm,
+  },
+  chipText: {
+    ...typography.caption,
+    fontWeight: '600',
   },
   catDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: spacing.sm,
+    height: spacing.sm,
+    borderRadius: spacing.xs,
   },
   sectionHeader: {
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginTop: 16,
-    marginBottom: 8,
+    ...typography.label,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
   },
   empty: {
     textAlign: 'center',
-    marginTop: 40,
-    fontSize: 15,
+    marginTop: spacing.xl + spacing.md,
+    ...typography.body,
   },
   fab: {
     position: 'absolute',
-    right: 20,
+    right: spacing.md + 4,
     width: 56,
     height: 56,
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  fabText: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '300',
-    marginTop: -2,
   },
 });

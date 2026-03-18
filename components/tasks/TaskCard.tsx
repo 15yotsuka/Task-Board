@@ -1,13 +1,16 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { Todo, Category } from '../../store/types';
+import { Todo } from '../../store/types';
 import { useThemeColors } from '../../lib/useTheme';
 import { formatDateTime, isOverdue } from '../../lib/dateUtils';
 import { PriorityBadge } from '../common/PriorityBadge';
 import { CategoryPill } from '../common/CategoryPill';
-import { radius, spacing } from '../../lib/theme';
+import { radius, spacing, typography } from '../../lib/theme';
 import { useAppStore } from '../../store/useAppStore';
+
+// チェックボックスのサイズ定数
+const CHECKBOX_SIZE = 22;
 
 interface Props {
   todo: Todo;
@@ -36,6 +39,9 @@ export function TaskCard({ todo, onPress, onToggleComplete }: Props) {
     scale.value = withSpring(1, { damping: 15 });
   };
 
+  // チェックボックスの左端からバッジ行までのオフセット
+  const badgeOffset = CHECKBOX_SIZE + spacing.sm;
+
   return (
     <Pressable
       onPress={() => onPress(todo)}
@@ -59,10 +65,9 @@ export function TaskCard({ todo, onPress, onToggleComplete }: Props) {
         <View style={styles.content}>
           {/* Row 1: Title */}
           <View style={styles.titleRow}>
-            {/* Checkbox */}
             <Pressable
               onPress={() => onToggleComplete?.(todo.id)}
-              hitSlop={8}
+              hitSlop={spacing.md}
               style={[
                 styles.checkbox,
                 {
@@ -92,7 +97,7 @@ export function TaskCard({ todo, onPress, onToggleComplete }: Props) {
             <Text
               style={[
                 styles.dueDate,
-                { color: overdue ? theme.danger : theme.secondaryText },
+                { color: overdue ? theme.danger : theme.secondaryText, marginLeft: badgeOffset },
               ]}
             >
               {overdue ? '期限超過 ' : ''}
@@ -101,7 +106,7 @@ export function TaskCard({ todo, onPress, onToggleComplete }: Props) {
           )}
 
           {/* Row 3: Badges */}
-          <View style={styles.badgeRow}>
+          <View style={[styles.badgeRow, { marginLeft: badgeOffset }]}>
             <PriorityBadge priority={todo.priority} />
             {category && <CategoryPill name={category.name} color={category.color} />}
           </View>
@@ -124,18 +129,18 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 12,
-    gap: 4,
+    padding: spacing.md - 4,
+    gap: spacing.xs,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: CHECKBOX_SIZE,
+    height: CHECKBOX_SIZE,
+    borderRadius: CHECKBOX_SIZE / 2,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -146,18 +151,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   title: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.bodyMedium,
     flex: 1,
   },
   dueDate: {
-    fontSize: 13,
-    marginLeft: 30,
+    ...typography.caption,
   },
   badgeRow: {
     flexDirection: 'row',
-    gap: 6,
-    marginLeft: 30,
+    gap: spacing.xs + 2,
     marginTop: 2,
   },
 });

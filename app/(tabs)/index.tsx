@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../store/useAppStore';
@@ -7,7 +7,7 @@ import { useThemeColors } from '../../lib/useTheme';
 import { getSection } from '../../lib/dateUtils';
 import { SummaryCard } from '../../components/home/SummaryCard';
 import { CategoryProgress } from '../../components/home/CategoryProgress';
-import { spacing } from '../../lib/theme';
+import { spacing, typography } from '../../lib/theme';
 
 export default function HomeScreen() {
   const theme = useThemeColors();
@@ -27,18 +27,21 @@ export default function HomeScreen() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.pageBg }]}
-      contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 80 }}
+      contentContainerStyle={{
+        paddingTop: insets.top + spacing.md,
+        paddingBottom: insets.bottom + spacing.tabBarOffset,
+      }}
     >
       <Text style={[styles.pageTitle, { color: theme.text }]}>ホーム</Text>
 
       <View style={styles.cards}>
-        <SummaryCard title="今日締切" count={stats.todayCount} color="#FF3B30" />
-        <SummaryCard title="今週締切" count={stats.weekCount} color="#FF9500" />
-        <SummaryCard title="期限超過" count={stats.overdueCount} color="#FF453A" />
+        <SummaryCard title="今日締切" count={stats.todayCount} color={theme.danger} />
+        <SummaryCard title="今週締切" count={stats.weekCount} color={theme.warning} />
+        <SummaryCard title="期限超過" count={stats.overdueCount} color={theme.danger} />
         <SummaryCard
           title="完了進捗"
           count={stats.completedCount}
-          color="#34C759"
+          color={theme.success}
           total={stats.total}
         />
       </View>
@@ -54,9 +57,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   pageTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    marginBottom: 16,
+    ...typography.title,
+    marginBottom: spacing.md,
   },
   cards: {
     marginBottom: spacing.md,
