@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Modal,
@@ -36,6 +36,8 @@ export function BottomSheet({ visible, onClose, children }: Props) {
   const theme = useThemeColors();
   const insets = useSafeAreaInsets();
 
+  const [localVisible, setLocalVisible] = useState(false);
+
   const overlayOpacity = useSharedValue(0);
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const keyboardOffset = useSharedValue(0);
@@ -46,16 +48,15 @@ export function BottomSheet({ visible, onClose, children }: Props) {
     translateY.value = withSpring(0, { damping: 28, stiffness: 300, mass: 0.8 });
   };
 
-  const closeSheet = () => {
-    overlayOpacity.value = withTiming(0, { duration: 220 });
-    translateY.value = withTiming(SCREEN_HEIGHT, { duration: 300, easing: iosEase });
-  };
-
   useEffect(() => {
     if (visible) {
-      openSheet();
+      setLocalVisible(true);
+      // openSheet is called via Modal's onShow callback
     } else {
-      closeSheet();
+      overlayOpacity.value = withTiming(0, { duration: 220 });
+      translateY.value = withTiming(SCREEN_HEIGHT, { duration: 300, easing: iosEase }, () => {
+        runOnJS(setLocalVisible)(false);
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
@@ -102,7 +103,7 @@ export function BottomSheet({ visible, onClose, children }: Props) {
   }));
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={localVisible} transparent animationType="none" onRequestClose={onClose} onShow={openSheet}>
       <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.root}>
         <Animated.View style={[styles.overlay, overlayStyle]}>
