@@ -137,10 +137,13 @@ export default function TasksScreen() {
         right={
           <Pressable
             onPress={() => setShowGroupManage(true)}
-            style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.5 : 1 }]}
-            hitSlop={10}
+            style={({ pressed }) => [
+              styles.groupBtn,
+              { borderColor: theme.border, backgroundColor: theme.cardBg, opacity: pressed ? 0.6 : 1 },
+            ]}
           >
-            <Ionicons name="layers-outline" size={22} color={theme.secondaryText} />
+            <Ionicons name="layers-outline" size={14} color={theme.primary} />
+            <Text style={[styles.groupBtnText, { color: theme.primary }]}>グループ管理</Text>
           </Pressable>
         }
       />
@@ -328,7 +331,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerBtn: {
-    padding: spacing.xs + 2,
+  groupBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 1,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+  },
+  groupBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
