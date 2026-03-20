@@ -148,8 +148,9 @@ export default function TasksScreen() {
         }
       />
 
-      {/* Sort chips */}
+      {/* Sort + Filter chips — single row */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chipContent}>
+        {/* Sort */}
         {SORT_OPTIONS.map((opt) => (
           <Pressable
             key={opt.key}
@@ -168,10 +169,11 @@ export default function TasksScreen() {
             </Text>
           </Pressable>
         ))}
-      </ScrollView>
 
-      {/* Filter chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chipContent}>
+        {/* Divider */}
+        <View style={[styles.chipDivider, { backgroundColor: theme.border }]} />
+
+        {/* Filter */}
         {FILTER_OPTIONS.map((opt) => (
           <Pressable
             key={opt.key}
@@ -298,6 +300,12 @@ const styles = StyleSheet.create({
   chipText: {
     ...typography.caption,
     fontWeight: '600',
+  },
+  chipDivider: {
+    width: 1,
+    height: 20,
+    alignSelf: 'center',
+    marginHorizontal: spacing.xs,
   },
   catDot: {
     width: spacing.sm,

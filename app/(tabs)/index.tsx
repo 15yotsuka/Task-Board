@@ -15,12 +15,15 @@ import { TaskCard } from '../../components/tasks/TaskCard';
 import { AddTaskForm } from '../../components/tasks/AddTaskForm';
 import { TaskDetailModal } from '../../components/tasks/TaskDetailModal';
 import { MonthView } from '../../components/calendar/MonthView';
+import { WeekView } from '../../components/calendar/WeekView';
 import { ScreenHeader } from '../../components/common/ScreenHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { Todo } from '../../store/types';
-import { addMonths, subMonths, isSameDay, parseISO, isValid, format } from 'date-fns';
+import { addMonths, subMonths, addWeeks, subWeeks, isSameDay, parseISO, isValid, format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { radius, spacing, shadow } from '../../lib/theme';
+
+type ViewMode = 'month' | 'week';
 
 export default function HomeScreen() {
   const theme = useThemeColors();
@@ -28,7 +31,8 @@ export default function HomeScreen() {
   const todos = useAppStore(useShallow((s) => s.todos));
   const toggleComplete = useAppStore((s) => s.toggleComplete);
 
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -36,11 +40,23 @@ export default function HomeScreen() {
   const calOpacity = useSharedValue(1);
   const animatedCalStyle = useAnimatedStyle(() => ({ opacity: calOpacity.value }));
 
-  const changeMonth = useCallback((updater: (m: Date) => Date) => {
+  const navigate = useCallback((dir: 1 | -1) => {
     calOpacity.value = withTiming(0, { duration: 120 }, () => {
       calOpacity.value = withTiming(1, { duration: 180 });
     });
-    setCurrentMonth(updater);
+    setCurrentDate((d) =>
+      viewMode === 'month'
+        ? (dir === 1 ? addMonths(d, 1) : subMonths(d, 1))
+        : (dir === 1 ? addWeeks(d, 1) : subWeeks(d, 1))
+    );
+  }, [calOpacity, viewMode]);
+
+  const goToday = useCallback(() => {
+    calOpacity.value = withTiming(0, { duration: 120 }, () => {
+      calOpacity.value = withTiming(1, { duration: 180 });
+    });
+    setCurrentDate(new Date());
+    setSelectedDate(new Date());
   }, [calOpacity]);
 
   const dayTasks = useMemo(() => {
@@ -55,28 +71,44 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.pageBg, paddingTop: insets.top }]}>
-      <ScreenHeader title="ホーム" subtitle="カレンダー＆デイリービュー" />
+      <ScreenHeader
+        title="ホーム"
+        subtitle="カレンダー＆デイリービュー"
+        right={
+          <View style={[styles.viewToggle, { borderColor: theme.primary }]}>
+            <Pressable
+              onPress={() => setViewMode('month')}
+              style={({ pressed }) => [
+                styles.toggleBtn,
+                styles.toggleLeft,
+                { backgroundColor: viewMode === 'month' ? theme.primary : 'transparent', opacity: pressed ? 0.8 : 1 },
+              ]}
+            >
+              <Text style={{ color: viewMode === 'month' ? '#FFF' : theme.primary, fontSize: 13, fontWeight: '600' }}>月</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setViewMode('week')}
+              style={({ pressed }) => [
+                styles.toggleBtn,
+                styles.toggleRight,
+                { backgroundColor: viewMode === 'week' ? theme.primary : 'transparent', opacity: pressed ? 0.8 : 1 },
+              ]}
+            >
+              <Text style={{ color: viewMode === 'week' ? '#FFF' : theme.primary, fontSize: 13, fontWeight: '600' }}>週</Text>
+            </Pressable>
+          </View>
+        }
+      />
 
-      {/* Month navigation */}
+      {/* Navigation row */}
       <View style={styles.navRow}>
-        <Pressable
-          onPress={() => changeMonth((m) => subMonths(m, 1))}
-          style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]}
-          hitSlop={8}
-        >
+        <Pressable onPress={() => navigate(-1)} style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]} hitSlop={8}>
           <Ionicons name="chevron-back" size={22} color={theme.primary} />
         </Pressable>
-        <Pressable
-          onPress={() => { changeMonth(() => new Date()); setSelectedDate(new Date()); }}
-          style={({ pressed }) => [styles.todayBtn, { borderColor: theme.primary, opacity: pressed ? 0.6 : 1 }]}
-        >
+        <Pressable onPress={goToday} style={({ pressed }) => [styles.todayBtn, { borderColor: theme.primary, opacity: pressed ? 0.6 : 1 }]}>
           <Text style={{ color: theme.primary, fontSize: 13, fontWeight: '600' }}>今日</Text>
         </Pressable>
-        <Pressable
-          onPress={() => changeMonth((m) => addMonths(m, 1))}
-          style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]}
-          hitSlop={8}
-        >
+        <Pressable onPress={() => navigate(1)} style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]} hitSlop={8}>
           <Ionicons name="chevron-forward" size={22} color={theme.primary} />
         </Pressable>
       </View>
@@ -88,38 +120,43 @@ export default function HomeScreen() {
           { paddingBottom: insets.bottom + spacing.tabBarOffset + spacing.xl },
         ]}
       >
-        {/* Calendar */}
         <Animated.View style={[styles.calCard, animatedCalStyle, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
-          <MonthView
-            currentMonth={currentMonth}
-            onDayPress={setSelectedDate}
-            selectedDate={selectedDate}
-          />
+          {viewMode === 'month' ? (
+            <MonthView
+              currentMonth={currentDate}
+              onDayPress={setSelectedDate}
+              selectedDate={selectedDate}
+            />
+          ) : (
+            <WeekView currentWeek={currentDate} onTodoPress={handleOpenDetail} />
+          )}
         </Animated.View>
 
-        {/* Day tasks */}
-        <View style={styles.daySection}>
-          <Text style={[styles.daySectionTitle, { color: theme.text }]}>
-            {format(selectedDate, 'M月d日(E)', { locale: ja })} のタスク
-          </Text>
-          {dayTasks.length > 0 ? (
-            dayTasks.map((todo) => (
-              <TaskCard
-                key={todo.id}
-                todo={todo}
-                onPress={handleOpenDetail}
-                onToggleComplete={toggleComplete}
-              />
-            ))
-          ) : (
-            <View style={styles.emptyWrap}>
-              <Ionicons name="checkmark-circle-outline" size={36} color={theme.border} />
-              <Text style={[styles.emptyText, { color: theme.secondaryText }]}>
-                この日のタスクはありません
-              </Text>
-            </View>
-          )}
-        </View>
+        {/* Day tasks — only shown in month mode */}
+        {viewMode === 'month' && (
+          <View style={styles.daySection}>
+            <Text style={[styles.daySectionTitle, { color: theme.text }]}>
+              {format(selectedDate, 'M月d日(E)', { locale: ja })} のタスク
+            </Text>
+            {dayTasks.length > 0 ? (
+              dayTasks.map((todo) => (
+                <TaskCard
+                  key={todo.id}
+                  todo={todo}
+                  onPress={handleOpenDetail}
+                  onToggleComplete={toggleComplete}
+                />
+              ))
+            ) : (
+              <View style={styles.emptyWrap}>
+                <Ionicons name="checkmark-circle-outline" size={36} color={theme.border} />
+                <Text style={[styles.emptyText, { color: theme.secondaryText }]}>
+                  この日のタスクはありません
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
       </ScrollView>
 
       {/* FAB */}
@@ -147,6 +184,24 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  toggleBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  toggleLeft: {
+    borderRightWidth: 0.5,
+    borderRightColor: 'transparent',
+  },
+  toggleRight: {
+    borderLeftWidth: 0.5,
+    borderLeftColor: 'transparent',
   },
   navRow: {
     flexDirection: 'row',
