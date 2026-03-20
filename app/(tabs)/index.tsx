@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../store/useAppStore';
@@ -34,6 +35,16 @@ export default function HomeScreen() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showGroupManage, setShowGroupManage] = useState(false);
 
+  const calOpacity = useSharedValue(1);
+  const animatedCalStyle = useAnimatedStyle(() => ({ opacity: calOpacity.value }));
+
+  const changeMonth = useCallback((updater: (m: Date) => Date) => {
+    calOpacity.value = withTiming(0, { duration: 120 }, () => {
+      calOpacity.value = withTiming(1, { duration: 180 });
+    });
+    setCurrentMonth(updater);
+  }, [calOpacity]);
+
   const dayTasks = useMemo(() => {
     return todos.filter((t) => {
       if (!t.dueDate) return false;
@@ -51,20 +62,20 @@ export default function HomeScreen() {
       {/* Month navigation */}
       <View style={styles.navRow}>
         <Pressable
-          onPress={() => setCurrentMonth((m) => subMonths(m, 1))}
+          onPress={() => changeMonth((m) => subMonths(m, 1))}
           style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]}
           hitSlop={8}
         >
           <Ionicons name="chevron-back" size={22} color={theme.primary} />
         </Pressable>
         <Pressable
-          onPress={() => { setCurrentMonth(new Date()); setSelectedDate(new Date()); }}
+          onPress={() => { changeMonth(() => new Date()); setSelectedDate(new Date()); }}
           style={({ pressed }) => [styles.todayBtn, { borderColor: theme.primary, opacity: pressed ? 0.6 : 1 }]}
         >
           <Text style={{ color: theme.primary, fontSize: 13, fontWeight: '600' }}>今日</Text>
         </Pressable>
         <Pressable
-          onPress={() => setCurrentMonth((m) => addMonths(m, 1))}
+          onPress={() => changeMonth((m) => addMonths(m, 1))}
           style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]}
           hitSlop={8}
         >
@@ -73,19 +84,20 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: insets.bottom + spacing.tabBarOffset + spacing.xl },
         ]}
       >
         {/* Calendar */}
-        <View style={[styles.calCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+        <Animated.View style={[styles.calCard, animatedCalStyle, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
           <MonthView
             currentMonth={currentMonth}
             onDayPress={setSelectedDate}
             selectedDate={selectedDate}
           />
-        </View>
+        </Animated.View>
 
         {/* Day tasks */}
         <View style={styles.daySection}>

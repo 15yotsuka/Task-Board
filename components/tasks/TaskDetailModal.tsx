@@ -9,7 +9,8 @@ import {
   Platform,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { parseISO, isValid } from 'date-fns';
+import { parseISO, isValid, format } from 'date-fns';
+import { ja } from 'date-fns/locale';
 import { useShallow } from 'zustand/react/shallow';
 import { Todo, Priority } from '../../store/types';
 import { useAppStore } from '../../store/useAppStore';
@@ -46,7 +47,9 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
   const [groupId, setGroupId] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [pendingDate, setPendingDate] = useState<Date>(new Date());
+  const [pendingTime, setPendingTime] = useState<Date>(new Date());
   const [notifMinutes, setNotifMinutes] = useState('');
 
   useEffect(() => {
@@ -161,13 +164,15 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
             <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>締切日時</Text>
             <Pressable
               onPress={() => {
-                setPendingDate(dueDate ?? new Date());
+                const base = dueDate ?? new Date();
+                setPendingDate(base);
+                setPendingTime(base);
                 setShowDatePicker(true);
               }}
               style={({ pressed }) => [styles.dateButton, { borderColor: theme.border, backgroundColor: theme.pageBg, opacity: pressed ? 0.7 : 1 }]}
             >
               <Text style={[styles.dateText, { color: dueDate ? theme.text : theme.secondaryText }]}>
-                {dueDate ? dueDate.toLocaleString('ja-JP') : '日時を選択'}
+                {dueDate ? format(dueDate, 'M月d日(E) HH:mm', { locale: ja }) : '日時を選択'}
               </Text>
             </Pressable>
             {dueDate && !showDatePicker && (
@@ -175,39 +180,69 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
                 <Text style={[styles.clearText, { color: theme.danger }]}>日時をクリア</Text>
               </Pressable>
             )}
-            {showDatePicker && (
+            {showDatePicker && Platform.OS === 'ios' && (
               <View style={[styles.pickerContainer, { backgroundColor: theme.pageBg, borderColor: theme.border }]}>
-                {Platform.OS === 'ios' && (
-                  <View style={[styles.pickerToolbar, { borderBottomColor: theme.border }]}>
-                    <Pressable
-                      onPress={() => setShowDatePicker(false)}
-                      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-                    >
-                      <Text style={[styles.pickerBtn, { color: theme.secondaryText }]}>キャンセル</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => { setDueDate(pendingDate); setShowDatePicker(false); }}
-                      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-                    >
-                      <Text style={[styles.pickerBtn, { color: theme.primary, fontWeight: '600' }]}>確認</Text>
-                    </Pressable>
-                  </View>
-                )}
+                <View style={[styles.pickerToolbar, { borderBottomColor: theme.border }]}>
+                  <Pressable
+                    onPress={() => setShowDatePicker(false)}
+                    style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                  >
+                    <Text style={[styles.pickerBtn, { color: theme.secondaryText }]}>キャンセル</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      const combined = new Date(pendingDate);
+                      combined.setHours(pendingTime.getHours(), pendingTime.getMinutes(), 0, 0);
+                      setDueDate(combined);
+                      setShowDatePicker(false);
+                    }}
+                    style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                  >
+                    <Text style={[styles.pickerBtn, { color: theme.primary, fontWeight: '600' }]}>確認</Text>
+                  </Pressable>
+                </View>
                 <DateTimePicker
                   value={pendingDate}
-                  mode="datetime"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={(_, selectedDate) => {
-                    if (Platform.OS === 'android') {
-                      setShowDatePicker(false);
-                      if (selectedDate) setDueDate(selectedDate);
-                    } else {
-                      if (selectedDate) setPendingDate(selectedDate);
-                    }
-                  }}
+                  mode="date"
+                  display="inline"
+                  onChange={(_, date) => { if (date) setPendingDate(date); }}
+                  locale="ja"
+                />
+                <View style={[styles.timeSeparator, { borderTopColor: theme.border }]} />
+                <DateTimePicker
+                  value={pendingTime}
+                  mode="time"
+                  display="spinner"
+                  onChange={(_, time) => { if (time) setPendingTime(time); }}
                   locale="ja"
                 />
               </View>
+            )}
+            {showDatePicker && Platform.OS === 'android' && (
+              <DateTimePicker
+                value={pendingDate}
+                mode="date"
+                display="default"
+                onChange={(_, date) => {
+                  setShowDatePicker(false);
+                  if (date) { setPendingDate(date); setShowTimePicker(true); }
+                }}
+              />
+            )}
+            {showTimePicker && Platform.OS === 'android' && (
+              <DateTimePicker
+                value={pendingTime}
+                mode="time"
+                display="default"
+                onChange={(_, time) => {
+                  setShowTimePicker(false);
+                  if (time) {
+                    const combined = new Date(pendingDate);
+                    combined.setHours(time.getHours(), time.getMinutes(), 0, 0);
+                    setDueDate(combined);
+                  }
+                }}
+              />
             )}
 
             {/* Group */}
@@ -425,6 +460,9 @@ const styles = StyleSheet.create({
   },
   pickerBtn: {
     fontSize: 15,
+  },
+  timeSeparator: {
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   categoryRow: {
     flexDirection: 'row',
