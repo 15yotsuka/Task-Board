@@ -15,8 +15,8 @@ function AppContent() {
     if (prevIsDark.current === isDark) return;
     prevIsDark.current = isDark;
     Animated.sequence([
-      Animated.timing(overlayOpacity, { toValue: 0.6, duration: 100, useNativeDriver: true }),
-      Animated.timing(overlayOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+      Animated.timing(overlayOpacity, { toValue: 0.2, duration: 180, useNativeDriver: true }),
+      Animated.timing(overlayOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
     ]).start();
   }, [isDark]);
 

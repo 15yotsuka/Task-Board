@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,6 @@ import { useThemeColors } from '../../lib/useTheme';
 import { TaskCard } from '../../components/tasks/TaskCard';
 import { AddTaskForm } from '../../components/tasks/AddTaskForm';
 import { TaskDetailModal } from '../../components/tasks/TaskDetailModal';
-import { GroupManageSheet } from '../../components/groups/GroupManageSheet';
 import { MonthView } from '../../components/calendar/MonthView';
 import { ScreenHeader } from '../../components/common/ScreenHeader';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,7 +32,6 @@ export default function HomeScreen() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [showGroupManage, setShowGroupManage] = useState(false);
 
   const calOpacity = useSharedValue(1);
   const animatedCalStyle = useAnimatedStyle(() => ({ opacity: calOpacity.value }));
@@ -142,7 +140,6 @@ export default function HomeScreen() {
         visible={!!selectedTodo}
         onClose={() => setSelectedTodo(null)}
       />
-      <GroupManageSheet visible={showGroupManage} onClose={() => setShowGroupManage(false)} />
     </View>
   );
 }
