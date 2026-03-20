@@ -1,20 +1,23 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState, Todo, Category } from './types';
+import { AppState, Todo, Category, Group, ThemeMode } from './types';
 
-const CURRENT_SCHEMA_VERSION = 1;
+const CURRENT_SCHEMA_VERSION = 2;
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
 }
+
 
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       todos: [],
       categories: [],
+      groups: [],
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      themeMode: 'system' as ThemeMode,
 
       // === Todo Actions ===
       addTodo: (todoData) => {
@@ -86,12 +89,40 @@ export const useAppStore = create<AppState>()(
         }));
       },
 
+      setThemeMode: (mode) => {
+        set({ themeMode: mode });
+      },
+
       deleteCategory: (id) => {
-        // カテゴリ削除時、関連タスクのcategoryIdをnullに
         set((state) => ({
           categories: state.categories.filter((c) => c.id !== id),
           todos: state.todos.map((t) =>
             t.categoryId === id ? { ...t, categoryId: null } : t
+          ),
+        }));
+      },
+
+      // === Group Actions ===
+      addGroup: (groupData) => {
+        const newGroup: Group = {
+          ...groupData,
+          id: generateId(),
+          createdAt: new Date().toISOString(),
+        };
+        set((state) => ({ groups: [...state.groups, newGroup] }));
+      },
+
+      updateGroup: (id, updates) => {
+        set((state) => ({
+          groups: state.groups.map((g) => (g.id === id ? { ...g, ...updates } : g)),
+        }));
+      },
+
+      deleteGroup: (id) => {
+        set((state) => ({
+          groups: state.groups.filter((g) => g.id !== id),
+          todos: state.todos.map((t) =>
+            t.groupId === id ? { ...t, groupId: null } : t
           ),
         }));
       },
@@ -101,13 +132,25 @@ export const useAppStore = create<AppState>()(
       storage: createJSONStorage(() => AsyncStorage),
       version: CURRENT_SCHEMA_VERSION,
       migrate: (persistedState: any, version: number) => {
-        // v1: initial version
+        if (version < 2) {
+          // v2: add groups, add groupId to todos
+          return {
+            ...persistedState,
+            groups: persistedState.groups ?? [],
+            todos: (persistedState.todos ?? []).map((t: any) => ({
+              ...t,
+              groupId: t.groupId ?? null,
+            })),
+          };
+        }
         return persistedState;
       },
       partialize: (state) => ({
         todos: state.todos,
         categories: state.categories,
+        groups: state.groups,
         schemaVersion: state.schemaVersion,
+        themeMode: state.themeMode,
       }),
     }
   )

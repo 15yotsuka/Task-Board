@@ -8,12 +8,15 @@ import {
   Platform,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { format } from 'date-fns';
+import { ja } from 'date-fns/locale';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../store/useAppStore';
 import { useThemeColors } from '../../lib/useTheme';
 import { BottomSheet } from '../common/BottomSheet';
+import { GroupManageSheet } from '../groups/GroupManageSheet';
 import { Priority } from '../../store/types';
-import { priorityColors, radius, spacing } from '../../lib/theme';
+import { priorityColors, radius, spacing, withAlpha } from '../../lib/theme';
 
 interface Props {
   visible: boolean;
@@ -30,21 +33,31 @@ export function AddTaskForm({ visible, onClose }: Props) {
   const theme = useThemeColors();
   const addTodo = useAppStore((s) => s.addTodo);
   const categories = useAppStore(useShallow((s) => s.categories));
+  const groups = useAppStore(useShallow((s) => s.groups));
 
   const [title, setTitle] = useState('');
   const [memo, setMemo] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [groupId, setGroupId] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [pendingDate, setPendingDate] = useState<Date>(new Date());
+  const [pendingTime, setPendingTime] = useState<Date>(new Date());
+  const [showGroupCreate, setShowGroupCreate] = useState(false);
 
   const reset = () => {
     setTitle('');
     setMemo('');
     setPriority('medium');
     setCategoryId(null);
+    setGroupId(null);
     setDueDate(null);
     setShowDatePicker(false);
+    setShowTimePicker(false);
+    setPendingDate(new Date());
+    setPendingTime(new Date());
   };
 
   const handleSave = () => {
@@ -55,6 +68,7 @@ export function AddTaskForm({ visible, onClose }: Props) {
       dueDate: dueDate ? dueDate.toISOString() : null,
       priority,
       categoryId,
+      groupId,
       isCompleted: false,
       orderIndex: 0,
       notificationMinutesBefore: null,
@@ -64,6 +78,7 @@ export function AddTaskForm({ visible, onClose }: Props) {
   };
 
   return (
+    <>
     <BottomSheet visible={visible} onClose={onClose}>
       <Text style={[styles.heading, { color: theme.text }]}>タスク追加</Text>
 
@@ -74,7 +89,6 @@ export function AddTaskForm({ visible, onClose }: Props) {
         placeholderTextColor={theme.secondaryText}
         value={title}
         onChangeText={setTitle}
-        autoFocus
       />
 
       {/* Memo */}
@@ -97,12 +111,13 @@ export function AddTaskForm({ visible, onClose }: Props) {
             <Pressable
               key={opt.key}
               onPress={() => setPriority(opt.key)}
-              style={[
+              style={({ pressed }) => [
                 styles.priorityChip,
                 {
                   backgroundColor: selected ? pc.bg : 'transparent',
                   borderColor: pc.text,
                   borderWidth: selected ? 2 : 1,
+                  opacity: pressed ? 0.7 : 1,
                 },
               ]}
             >
@@ -112,6 +127,50 @@ export function AddTaskForm({ visible, onClose }: Props) {
         })}
       </View>
 
+      {/* Group */}
+      <>
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, { color: theme.secondaryText }]}>グループ</Text>
+          <Pressable onPress={() => setShowGroupCreate(true)} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+            <Text style={[styles.labelAction, { color: theme.primary }]}>＋ 新規グループ</Text>
+          </Pressable>
+        </View>
+        {groups.length > 0 && (
+          <View style={styles.categoryRow}>
+            <Pressable
+              onPress={() => setGroupId(null)}
+              style={({ pressed }) => [
+                styles.categoryChip,
+                {
+                  backgroundColor: groupId === null ? theme.primaryBg : 'transparent',
+                  borderColor: theme.border,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+            >
+              <Text style={{ color: theme.text, fontSize: 13 }}>なし</Text>
+            </Pressable>
+            {groups.map((g) => (
+              <Pressable
+                key={g.id}
+                onPress={() => setGroupId(g.id)}
+                style={({ pressed }) => [
+                  styles.categoryChip,
+                  {
+                    backgroundColor: groupId === g.id ? withAlpha(g.color, 0.15) : 'transparent',
+                    borderColor: groupId === g.id ? g.color : theme.border,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <View style={[styles.catDot, { backgroundColor: g.color }]} />
+                <Text style={{ color: theme.text, fontSize: 13 }}>{g.name}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </>
+
       {/* Category */}
       {categories.length > 0 && (
         <>
@@ -119,11 +178,12 @@ export function AddTaskForm({ visible, onClose }: Props) {
           <View style={styles.categoryRow}>
             <Pressable
               onPress={() => setCategoryId(null)}
-              style={[
+              style={({ pressed }) => [
                 styles.categoryChip,
                 {
                   backgroundColor: categoryId === null ? theme.primaryBg : 'transparent',
                   borderColor: theme.border,
+                  opacity: pressed ? 0.7 : 1,
                 },
               ]}
             >
@@ -133,11 +193,12 @@ export function AddTaskForm({ visible, onClose }: Props) {
               <Pressable
                 key={cat.id}
                 onPress={() => setCategoryId(cat.id)}
-                style={[
+                style={({ pressed }) => [
                   styles.categoryChip,
                   {
-                    backgroundColor: categoryId === cat.id ? cat.color + '1A' : 'transparent',
+                    backgroundColor: categoryId === cat.id ? withAlpha(cat.color, 0.1) : 'transparent',
                     borderColor: categoryId === cat.id ? cat.color : theme.border,
+                    opacity: pressed ? 0.7 : 1,
                   },
                 ]}
               >
@@ -152,41 +213,103 @@ export function AddTaskForm({ visible, onClose }: Props) {
       {/* Due Date */}
       <Text style={[styles.label, { color: theme.secondaryText }]}>締切日時</Text>
       <Pressable
-        onPress={() => setShowDatePicker(true)}
-        style={[styles.dateButton, { borderColor: theme.border, backgroundColor: theme.pageBg }]}
+        onPress={() => {
+          const base = dueDate ?? new Date();
+          setPendingDate(base);
+          setPendingTime(base);
+          setShowDatePicker(true);
+        }}
+        style={({ pressed }) => [styles.dateButton, { borderColor: theme.border, backgroundColor: theme.pageBg, opacity: pressed ? 0.7 : 1 }]}
       >
         <Text style={{ color: dueDate ? theme.text : theme.secondaryText, fontSize: 15 }}>
-          {dueDate ? dueDate.toLocaleString('ja-JP') : '日時を選択'}
+          {dueDate ? format(dueDate, 'M月d日(E) HH:mm', { locale: ja }) : '日時を選択'}
         </Text>
       </Pressable>
-      {dueDate && (
-        <Pressable onPress={() => setDueDate(null)}>
+      {dueDate && !showDatePicker && (
+        <Pressable onPress={() => setDueDate(null)} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <Text style={{ color: theme.danger, fontSize: 13, marginTop: 4 }}>日時をクリア</Text>
         </Pressable>
       )}
 
-      {showDatePicker && (
+      {showDatePicker && Platform.OS === 'ios' && (
+        <View style={[styles.pickerContainer, { backgroundColor: theme.pageBg, borderColor: theme.border }]}>
+          <View style={[styles.pickerToolbar, { borderBottomColor: theme.border }]}>
+            <Pressable
+              onPress={() => setShowDatePicker(false)}
+              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+            >
+              <Text style={[styles.pickerToolbarBtn, { color: theme.secondaryText }]}>キャンセル</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                const combined = new Date(pendingDate);
+                combined.setHours(pendingTime.getHours(), pendingTime.getMinutes(), 0, 0);
+                setDueDate(combined);
+                setShowDatePicker(false);
+              }}
+              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+            >
+              <Text style={[styles.pickerToolbarBtn, { color: theme.primary, fontWeight: '600' }]}>確認</Text>
+            </Pressable>
+          </View>
+          <DateTimePicker
+            value={pendingDate}
+            mode="date"
+            display="inline"
+            onChange={(_, date) => { if (date) setPendingDate(date); }}
+            locale="ja"
+          />
+          <View style={[styles.timeSeparator, { borderTopColor: theme.border }]} />
+          <DateTimePicker
+            value={pendingTime}
+            mode="time"
+            display="spinner"
+            onChange={(_, time) => { if (time) setPendingTime(time); }}
+            locale="ja"
+          />
+        </View>
+      )}
+      {showDatePicker && Platform.OS === 'android' && (
         <DateTimePicker
-          value={dueDate ?? new Date()}
-          mode="datetime"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={(_, selectedDate) => {
-            setShowDatePicker(Platform.OS !== 'ios');
-            if (selectedDate) setDueDate(selectedDate);
+          value={pendingDate}
+          mode="date"
+          display="default"
+          onChange={(_, date) => {
+            setShowDatePicker(false);
+            if (date) {
+              setPendingDate(date);
+              setShowTimePicker(true);
+            }
           }}
-          locale="ja"
+        />
+      )}
+      {showTimePicker && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={pendingTime}
+          mode="time"
+          display="default"
+          onChange={(_, time) => {
+            setShowTimePicker(false);
+            if (time) {
+              const combined = new Date(pendingDate);
+              combined.setHours(time.getHours(), time.getMinutes(), 0, 0);
+              setDueDate(combined);
+            }
+          }}
         />
       )}
 
       {/* Save */}
       <Pressable
         onPress={handleSave}
-        style={[styles.saveButton, { backgroundColor: theme.primary, opacity: title.trim() ? 1 : 0.5 }]}
+        style={({ pressed }) => [styles.saveButton, { backgroundColor: theme.primary, opacity: !title.trim() ? 0.5 : pressed ? 0.75 : 1 }]}
         disabled={!title.trim()}
       >
         <Text style={styles.saveText}>追加</Text>
       </Pressable>
     </BottomSheet>
+    <GroupManageSheet visible={showGroupCreate} onClose={() => setShowGroupCreate(false)} />
+  </>
   );
 }
 
@@ -247,10 +370,40 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  labelAction: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
   dateButton: {
     borderWidth: 1,
     borderRadius: radius.input,
     padding: 14,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderRadius: radius.card,
+    marginTop: spacing.sm,
+    overflow: 'hidden',
+  },
+  pickerToolbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  pickerToolbarBtn: {
+    fontSize: 15,
+  },
+  timeSeparator: {
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   saveButton: {
     marginTop: 24,

@@ -11,6 +11,8 @@ import { TaskDetailModal } from '../../components/tasks/TaskDetailModal';
 import { TaskCard } from '../../components/tasks/TaskCard';
 import { Todo } from '../../store/types';
 import { radius, spacing } from '../../lib/theme';
+import { ScreenHeader } from '../../components/common/ScreenHeader';
+import { Ionicons } from '@expo/vector-icons';
 
 type ViewMode = 'month' | 'week';
 
@@ -44,51 +46,57 @@ export default function CalendarScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.pageBg, paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={[styles.pageTitle, { color: theme.text }]}>カレンダー</Text>
-        <View style={styles.viewToggle}>
-          <Pressable
-            onPress={() => setViewMode('month')}
-            style={[
-              styles.toggleBtn,
-              {
-                backgroundColor: viewMode === 'month' ? theme.primary : 'transparent',
-                borderColor: theme.primary,
-              },
-            ]}
-          >
-            <Text style={{ color: viewMode === 'month' ? '#FFF' : theme.primary, fontSize: 13, fontWeight: '600' }}>
-              月
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setViewMode('week')}
-            style={[
-              styles.toggleBtn,
-              {
-                backgroundColor: viewMode === 'week' ? theme.primary : 'transparent',
-                borderColor: theme.primary,
-              },
-            ]}
-          >
-            <Text style={{ color: viewMode === 'week' ? '#FFF' : theme.primary, fontSize: 13, fontWeight: '600' }}>
-              週
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+      <ScreenHeader
+        title="カレンダー"
+        right={
+          <View style={[styles.viewToggle, { borderColor: theme.primary }]}>
+            <Pressable
+              onPress={() => setViewMode('month')}
+              style={({ pressed }) => [
+                styles.toggleBtn,
+                styles.toggleLeft,
+                {
+                  backgroundColor: viewMode === 'month' ? theme.primary : 'transparent',
+                  opacity: pressed ? 0.8 : 1,
+                },
+              ]}
+            >
+              <Text style={{ color: viewMode === 'month' ? '#FFF' : theme.primary, fontSize: 13, fontWeight: '600' }}>
+                月
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setViewMode('week')}
+              style={({ pressed }) => [
+                styles.toggleBtn,
+                styles.toggleRight,
+                {
+                  backgroundColor: viewMode === 'week' ? theme.primary : 'transparent',
+                  opacity: pressed ? 0.8 : 1,
+                },
+              ]}
+            >
+              <Text style={{ color: viewMode === 'week' ? '#FFF' : theme.primary, fontSize: 13, fontWeight: '600' }}>
+                週
+              </Text>
+            </Pressable>
+          </View>
+        }
+      />
 
-      {/* Navigation arrows */}
+      {/* Navigation row */}
       <View style={styles.navRow}>
-        <Pressable onPress={handlePrev} style={styles.navBtn}>
-          <Text style={{ color: theme.primary, fontSize: 18 }}>{'◀'}</Text>
+        <Pressable onPress={handlePrev} style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]} hitSlop={8}>
+          <Ionicons name="chevron-back" size={22} color={theme.primary} />
         </Pressable>
-        <Pressable onPress={() => setCurrentDate(new Date())} style={styles.navBtn}>
-          <Text style={{ color: theme.primary, fontSize: 14, fontWeight: '600' }}>今日</Text>
+        <Pressable
+          onPress={() => setCurrentDate(new Date())}
+          style={({ pressed }) => [styles.todayBtn, { borderColor: theme.primary, opacity: pressed ? 0.6 : 1 }]}
+        >
+          <Text style={{ color: theme.primary, fontSize: 13, fontWeight: '600' }}>今日</Text>
         </Pressable>
-        <Pressable onPress={handleNext} style={styles.navBtn}>
-          <Text style={{ color: theme.primary, fontSize: 18 }}>{'▶'}</Text>
+        <Pressable onPress={handleNext} style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]} hitSlop={8}>
+          <Ionicons name="chevron-forward" size={22} color={theme.primary} />
         </Pressable>
       </View>
 
@@ -97,30 +105,40 @@ export default function CalendarScreen() {
       >
         {viewMode === 'month' ? (
           <>
-            <MonthView
-              currentMonth={currentDate}
-              onDayPress={setSelectedDate}
-              selectedDate={selectedDate}
-            />
+            <View style={[styles.calCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+              <MonthView
+                currentMonth={currentDate}
+                onDayPress={setSelectedDate}
+                selectedDate={selectedDate}
+              />
+            </View>
             {/* Selected day's tasks */}
-            {selectedDate && selectedDayTodos.length > 0 && (
+            {selectedDate && (
               <View style={styles.dayTasks}>
                 <Text style={[styles.dayTasksTitle, { color: theme.text }]}>
                   選択日のタスク
                 </Text>
-                {selectedDayTodos.map((todo) => (
-                  <TaskCard
-                    key={todo.id}
-                    todo={todo}
-                    onPress={setSelectedTodo}
-                    onToggleComplete={toggleComplete}
-                  />
-                ))}
+                {selectedDayTodos.length > 0 ? (
+                  selectedDayTodos.map((todo) => (
+                    <TaskCard
+                      key={todo.id}
+                      todo={todo}
+                      onPress={setSelectedTodo}
+                      onToggleComplete={toggleComplete}
+                    />
+                  ))
+                ) : (
+                  <Text style={[styles.dayEmpty, { color: theme.secondaryText }]}>
+                    この日のタスクはありません
+                  </Text>
+                )}
               </View>
             )}
           </>
         ) : (
-          <WeekView currentWeek={currentDate} onTodoPress={setSelectedTodo} />
+          <View style={[styles.calCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+            <WeekView currentWeek={currentDate} onTodoPress={setSelectedTodo} />
+          </View>
         )}
       </ScrollView>
 
@@ -137,26 +155,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  pageTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-  },
   viewToggle: {
     flexDirection: 'row',
-    gap: 0,
+    borderWidth: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   toggleBtn: {
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderWidth: 1,
+  },
+  toggleLeft: {
+    borderRightWidth: 0.5,
+    borderRightColor: 'transparent',
+  },
+  toggleRight: {
+    borderLeftWidth: 0.5,
+    borderLeftColor: 'transparent',
   },
   navRow: {
     flexDirection: 'row',
@@ -168,12 +183,29 @@ const styles = StyleSheet.create({
   navBtn: {
     padding: 8,
   },
+  todayBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  calCard: {
+    borderRadius: radius.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
   dayTasks: {
-    marginTop: 16,
+    marginTop: spacing.sm,
   },
   dayTasksTitle: {
     fontSize: 15,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
+  },
+  dayEmpty: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginVertical: spacing.md,
   },
 });

@@ -13,7 +13,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../store/useAppStore';
 import { useThemeColors } from '../../lib/useTheme';
 import { Todo } from '../../store/types';
-import { radius } from '../../lib/theme';
+import { radius, spacing, withAlpha } from '../../lib/theme';
 
 interface Props {
   currentWeek: Date;
@@ -24,6 +24,7 @@ export function WeekView({ currentWeek, onTodoPress }: Props) {
   const theme = useThemeColors();
   const todos = useAppStore(useShallow((s) => s.todos));
   const categories = useAppStore(useShallow((s) => s.categories));
+  const groups = useAppStore(useShallow((s) => s.groups));
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -59,12 +60,22 @@ export function WeekView({ currentWeek, onTodoPress }: Props) {
               <Text style={[styles.empty, { color: theme.secondaryText }]}>予定なし</Text>
             ) : (
               dayTodos.map((todo) => {
+                const grp = groups.find((g) => g.id === todo.groupId);
                 const cat = categories.find((c) => c.id === todo.categoryId);
+                const accentColor = grp?.color ?? cat?.color ?? theme.primary;
                 return (
                   <Pressable
                     key={todo.id}
                     onPress={() => onTodoPress(todo)}
-                    style={[styles.todoBlock, { backgroundColor: (cat?.color ?? theme.primary) + '1A', borderLeftColor: cat?.color ?? theme.primary }]}
+                    style={({ pressed }) => [
+                      styles.todoBlock,
+                      {
+                        backgroundColor: withAlpha(accentColor, 0.1),
+                        borderLeftColor: accentColor,
+                        opacity: pressed ? 0.7 : 1,
+                        transform: [{ scale: pressed ? 0.97 : 1 }],
+                      },
+                    ]}
                   >
                     <Text style={[styles.todoTitle, { color: theme.text }]} numberOfLines={1}>
                       {todo.title}
@@ -87,13 +98,13 @@ export function WeekView({ currentWeek, onTodoPress }: Props) {
 
 const styles = StyleSheet.create({
   dayRow: {
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   dayHeader: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginBottom: 4,
+    paddingHorizontal: spacing.md - 4,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.button,
+    marginBottom: spacing.xs,
   },
   dayLabel: {
     fontSize: 14,
@@ -101,19 +112,19 @@ const styles = StyleSheet.create({
   },
   empty: {
     fontSize: 13,
-    paddingLeft: 12,
-    paddingVertical: 4,
+    paddingLeft: spacing.md - 4,
+    paddingVertical: spacing.xs,
   },
   todoBlock: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderLeftWidth: 4,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 4,
-    marginLeft: 8,
+    borderRadius: radius.button,
+    paddingHorizontal: spacing.md - 4,
+    paddingVertical: spacing.sm + 2,
+    marginBottom: spacing.xs,
+    marginLeft: spacing.sm,
   },
   todoTitle: {
     fontSize: 14,
@@ -122,6 +133,6 @@ const styles = StyleSheet.create({
   },
   todoTime: {
     fontSize: 12,
-    marginLeft: 8,
+    marginLeft: spacing.sm,
   },
 });

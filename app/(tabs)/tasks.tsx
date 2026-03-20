@@ -7,6 +7,7 @@ import {
   StyleSheet,
   SectionList,
 } from 'react-native';
+import type { SectionListData } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
@@ -16,11 +17,14 @@ import { getSection, sectionLabels, Section } from '../../lib/dateUtils';
 import { TaskCard } from '../../components/tasks/TaskCard';
 import { AddTaskForm } from '../../components/tasks/AddTaskForm';
 import { TaskDetailModal } from '../../components/tasks/TaskDetailModal';
+import { GroupManageSheet } from '../../components/groups/GroupManageSheet';
 import { Todo } from '../../store/types';
 import { radius, spacing, typography, shadow, withAlpha } from '../../lib/theme';
+import { ScreenHeader } from '../../components/common/ScreenHeader';
 
 type SortMode = 'dueDate' | 'manual' | 'priority' | 'combined';
 type FilterMode = 'incomplete' | 'completed' | 'all';
+type TaskSection = SectionListData<Todo, { title: string; section: Section }>;
 
 const SORT_OPTIONS: { key: SortMode; label: string }[] = [
   { key: 'dueDate', label: '期限順' },
@@ -43,12 +47,15 @@ export default function TasksScreen() {
   const insets = useSafeAreaInsets();
   const todos = useAppStore(useShallow((s) => s.todos));
   const categories = useAppStore(useShallow((s) => s.categories));
+  const groups = useAppStore(useShallow((s) => s.groups));
   const toggleComplete = useAppStore((s) => s.toggleComplete);
 
   const [sortMode, setSortMode] = useState<SortMode>('dueDate');
   const [filterMode, setFilterMode] = useState<FilterMode>('incomplete');
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
+  const [filterGroupId, setFilterGroupId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showGroupManage, setShowGroupManage] = useState(false);
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
 
   const filteredAndSorted = useMemo(() => {
@@ -58,6 +65,10 @@ export default function TasksScreen() {
       filtered = filtered.filter((t) => !t.isCompleted);
     } else if (filterMode === 'completed') {
       filtered = filtered.filter((t) => t.isCompleted);
+    }
+
+    if (filterGroupId) {
+      filtered = filtered.filter((t) => t.groupId === filterGroupId);
     }
 
     if (filterCategoryId) {
@@ -89,23 +100,23 @@ export default function TasksScreen() {
     });
 
     return filtered;
-  }, [todos, sortMode, filterMode, filterCategoryId]);
+  }, [todos, sortMode, filterMode, filterCategoryId, filterGroupId]);
 
   const sections = useMemo(() => {
-    const groups: Record<Section, Todo[]> = {
+    const grouped: Record<Section, Todo[]> = {
       overdue: [], today: [], thisWeek: [], thisMonth: [], later: [], unset: [], completed: [],
     };
 
     filteredAndSorted.forEach((t) => {
       const section = getSection(t.dueDate, t.isCompleted);
-      groups[section].push(t);
+      grouped[section].push(t);
     });
 
     return SECTION_ORDER
-      .filter((key) => groups[key].length > 0)
+      .filter((key) => grouped[key].length > 0)
       .map((key) => ({
         title: sectionLabels[key],
-        data: groups[key],
+        data: grouped[key],
         section: key,
       }));
   }, [filteredAndSorted]);
@@ -114,21 +125,26 @@ export default function TasksScreen() {
     setSelectedTodo(todo);
   }, []);
 
+  const renderItem = useCallback(({ item }: { item: Todo }) => (
+    <TaskCard todo={item} onPress={handleOpenDetail} onToggleComplete={toggleComplete} />
+  ), [handleOpenDetail, toggleComplete]);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.pageBg, paddingTop: insets.top }]}>
-      <Text style={[styles.pageTitle, { color: theme.text }]}>タスク</Text>
+      <ScreenHeader title="タスク" subtitle="並べ替え・検索・全タスク管理" />
 
       {/* Sort chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chipContent}>
         {SORT_OPTIONS.map((opt) => (
           <Pressable
             key={opt.key}
             onPress={() => setSortMode(opt.key)}
-            style={[
+            style={({ pressed }) => [
               styles.chip,
               {
                 backgroundColor: sortMode === opt.key ? theme.primary : theme.cardBg,
                 borderColor: sortMode === opt.key ? theme.primary : theme.border,
+                opacity: pressed ? 0.7 : 1,
               },
             ]}
           >
@@ -140,16 +156,17 @@ export default function TasksScreen() {
       </ScrollView>
 
       {/* Filter chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chipContent}>
         {FILTER_OPTIONS.map((opt) => (
           <Pressable
             key={opt.key}
             onPress={() => setFilterMode(opt.key)}
-            style={[
+            style={({ pressed }) => [
               styles.chip,
               {
                 backgroundColor: filterMode === opt.key ? theme.primaryBg : theme.cardBg,
                 borderColor: filterMode === opt.key ? theme.primary : theme.border,
+                opacity: pressed ? 0.7 : 1,
               },
             ]}
           >
@@ -158,15 +175,33 @@ export default function TasksScreen() {
             </Text>
           </Pressable>
         ))}
+        {groups.map((g) => (
+          <Pressable
+            key={g.id}
+            onPress={() => setFilterGroupId(filterGroupId === g.id ? null : g.id)}
+            style={({ pressed }) => [
+              styles.chip,
+              {
+                backgroundColor: filterGroupId === g.id ? withAlpha(g.color, 0.12) : theme.cardBg,
+                borderColor: filterGroupId === g.id ? g.color : theme.border,
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+          >
+            <View style={[styles.catDot, { backgroundColor: g.color }]} />
+            <Text style={[styles.chipText, { color: theme.text }]}>{g.name}</Text>
+          </Pressable>
+        ))}
         {categories.map((cat) => (
           <Pressable
             key={cat.id}
             onPress={() => setFilterCategoryId(filterCategoryId === cat.id ? null : cat.id)}
-            style={[
+            style={({ pressed }) => [
               styles.chip,
               {
                 backgroundColor: filterCategoryId === cat.id ? withAlpha(cat.color, 0.1) : theme.cardBg,
                 borderColor: filterCategoryId === cat.id ? cat.color : theme.border,
+                opacity: pressed ? 0.7 : 1,
               },
             ]}
           >
@@ -174,17 +209,25 @@ export default function TasksScreen() {
             <Text style={[styles.chipText, { color: theme.text }]}>{cat.name}</Text>
           </Pressable>
         ))}
+        <Pressable
+          onPress={() => setShowGroupManage(true)}
+          style={({ pressed }) => [styles.chip, { backgroundColor: theme.cardBg, borderColor: theme.border, opacity: pressed ? 0.7 : 1 }]}
+        >
+          <Ionicons name="layers-outline" size={14} color={theme.secondaryText} />
+          <Text style={[styles.chipText, { color: theme.secondaryText }]}>グループ</Text>
+        </Pressable>
       </ScrollView>
 
       {/* Task list */}
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TaskCard todo={item} onPress={handleOpenDetail} onToggleComplete={toggleComplete} />
-        )}
-        renderSectionHeader={({ section: { title } }) => (
-          <Text style={[styles.sectionHeader, { color: theme.secondaryText }]}>{title}</Text>
+        renderItem={renderItem}
+        removeClippedSubviews={true}
+        renderSectionHeader={({ section }: { section: TaskSection }) => (
+          <Text style={[styles.sectionHeader, { color: section.section === 'overdue' ? theme.danger : theme.secondaryText }]}>
+            {section.title}
+          </Text>
         )}
         contentContainerStyle={{
           paddingHorizontal: spacing.md,
@@ -192,7 +235,11 @@ export default function TasksScreen() {
         }}
         stickySectionHeadersEnabled={false}
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: theme.secondaryText }]}>タスクがありません</Text>
+          <View style={styles.emptyWrap}>
+            <Ionicons name="checkmark-circle-outline" size={48} color={theme.border} />
+            <Text style={[styles.empty, { color: theme.secondaryText }]}>タスクがありません</Text>
+            <Text style={[styles.emptyHint, { color: theme.secondaryText }]}>＋ボタンでタスクを追加しましょう</Text>
+          </View>
         }
       />
 
@@ -214,6 +261,7 @@ export default function TasksScreen() {
         visible={!!selectedTodo}
         onClose={() => setSelectedTodo(null)}
       />
+      <GroupManageSheet visible={showGroupManage} onClose={() => setShowGroupManage(false)} />
     </View>
   );
 }
@@ -222,16 +270,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  pageTitle: {
-    ...typography.title,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-    marginTop: spacing.md,
-  },
   chipScroll: {
-    paddingHorizontal: spacing.md,
     marginBottom: spacing.sm,
     flexGrow: 0,
+  },
+  chipContent: {
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
   },
   chip: {
     flexDirection: 'row',
@@ -241,7 +286,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs + 2,
     borderRadius: radius.pill,
     borderWidth: 1,
-    marginRight: spacing.sm,
   },
   chipText: {
     ...typography.caption,
@@ -257,10 +301,18 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     marginBottom: spacing.sm,
   },
+  emptyWrap: {
+    alignItems: 'center',
+    marginTop: spacing.xl * 2,
+    gap: spacing.md,
+  },
   empty: {
     textAlign: 'center',
-    marginTop: spacing.xl + spacing.md,
     ...typography.body,
+  },
+  emptyHint: {
+    fontSize: 13,
+    textAlign: 'center',
   },
   fab: {
     position: 'absolute',

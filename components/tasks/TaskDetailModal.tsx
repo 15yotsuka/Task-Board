@@ -36,14 +36,17 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
   const updateTodo = useAppStore((s) => s.updateTodo);
   const deleteTodo = useAppStore((s) => s.deleteTodo);
   const categories = useAppStore(useShallow((s) => s.categories));
+  const groups = useAppStore(useShallow((s) => s.groups));
 
   const [activeTab, setActiveTab] = useState(0);
   const [title, setTitle] = useState('');
   const [memo, setMemo] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [groupId, setGroupId] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pendingDate, setPendingDate] = useState<Date>(new Date());
   const [notifMinutes, setNotifMinutes] = useState('');
 
   useEffect(() => {
@@ -52,6 +55,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
       setMemo(todo.memo);
       setPriority(todo.priority);
       setCategoryId(todo.categoryId);
+      setGroupId(todo.groupId);
       setNotifMinutes(todo.notificationMinutesBefore?.toString() ?? '');
       if (todo.dueDate) {
         const d = parseISO(todo.dueDate);
@@ -73,6 +77,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
       memo: memo.trim(),
       priority,
       categoryId,
+      groupId,
       dueDate: dueDate ? dueDate.toISOString() : null,
       notificationMinutesBefore: parsed && !isNaN(parsed) ? parsed : null,
     });
@@ -113,12 +118,13 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
             <Pressable
               key={opt.key}
               onPress={() => setPriority(opt.key)}
-              style={[
+              style={({ pressed }) => [
                 styles.priorityChip,
                 {
                   backgroundColor: selected ? pc.bg : 'transparent',
                   borderColor: pc.text,
                   borderWidth: selected ? 2 : 1,
+                  opacity: pressed ? 0.7 : 1,
                 },
               ]}
             >
@@ -131,7 +137,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
       {/* Tabs */}
       <View style={[styles.tabBar, { borderBottomColor: theme.border }]}>
         {TABS.map((tab, i) => (
-          <Pressable key={tab} onPress={() => setActiveTab(i)} style={styles.tab}>
+          <Pressable key={tab} onPress={() => setActiveTab(i)} style={({ pressed }) => [styles.tab, { opacity: pressed ? 0.7 : 1 }]}>
             <Text
               style={[
                 styles.tabText,
@@ -154,29 +160,93 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
             {/* Due date */}
             <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>締切日時</Text>
             <Pressable
-              onPress={() => setShowDatePicker(true)}
-              style={[styles.dateButton, { borderColor: theme.border, backgroundColor: theme.pageBg }]}
+              onPress={() => {
+                setPendingDate(dueDate ?? new Date());
+                setShowDatePicker(true);
+              }}
+              style={({ pressed }) => [styles.dateButton, { borderColor: theme.border, backgroundColor: theme.pageBg, opacity: pressed ? 0.7 : 1 }]}
             >
               <Text style={[styles.dateText, { color: dueDate ? theme.text : theme.secondaryText }]}>
                 {dueDate ? dueDate.toLocaleString('ja-JP') : '日時を選択'}
               </Text>
             </Pressable>
-            {dueDate && (
-              <Pressable onPress={() => setDueDate(null)} hitSlop={spacing.sm} style={styles.clearButton}>
+            {dueDate && !showDatePicker && (
+              <Pressable onPress={() => setDueDate(null)} hitSlop={spacing.sm} style={({ pressed }) => [styles.clearButton, { opacity: pressed ? 0.6 : 1 }]}>
                 <Text style={[styles.clearText, { color: theme.danger }]}>日時をクリア</Text>
               </Pressable>
             )}
             {showDatePicker && (
-              <DateTimePicker
-                value={dueDate ?? new Date()}
-                mode="datetime"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(_, selectedDate) => {
-                  setShowDatePicker(Platform.OS !== 'ios');
-                  if (selectedDate) setDueDate(selectedDate);
-                }}
-                locale="ja"
-              />
+              <View style={[styles.pickerContainer, { backgroundColor: theme.pageBg, borderColor: theme.border }]}>
+                {Platform.OS === 'ios' && (
+                  <View style={[styles.pickerToolbar, { borderBottomColor: theme.border }]}>
+                    <Pressable
+                      onPress={() => setShowDatePicker(false)}
+                      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                    >
+                      <Text style={[styles.pickerBtn, { color: theme.secondaryText }]}>キャンセル</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => { setDueDate(pendingDate); setShowDatePicker(false); }}
+                      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                    >
+                      <Text style={[styles.pickerBtn, { color: theme.primary, fontWeight: '600' }]}>確認</Text>
+                    </Pressable>
+                  </View>
+                )}
+                <DateTimePicker
+                  value={pendingDate}
+                  mode="datetime"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(_, selectedDate) => {
+                    if (Platform.OS === 'android') {
+                      setShowDatePicker(false);
+                      if (selectedDate) setDueDate(selectedDate);
+                    } else {
+                      if (selectedDate) setPendingDate(selectedDate);
+                    }
+                  }}
+                  locale="ja"
+                />
+              </View>
+            )}
+
+            {/* Group */}
+            {groups.length > 0 && (
+              <>
+                <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>グループ</Text>
+                <View style={styles.categoryRow}>
+                  <Pressable
+                    onPress={() => setGroupId(null)}
+                    style={({ pressed }) => [
+                      styles.categoryChip,
+                      {
+                        backgroundColor: groupId === null ? theme.primaryBg : 'transparent',
+                        borderColor: theme.border,
+                        opacity: pressed ? 0.7 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.categoryChipText, { color: theme.text }]}>なし</Text>
+                  </Pressable>
+                  {groups.map((g) => (
+                    <Pressable
+                      key={g.id}
+                      onPress={() => setGroupId(g.id)}
+                      style={({ pressed }) => [
+                        styles.categoryChip,
+                        {
+                          backgroundColor: groupId === g.id ? withAlpha(g.color, 0.12) : 'transparent',
+                          borderColor: groupId === g.id ? g.color : theme.border,
+                          opacity: pressed ? 0.7 : 1,
+                        },
+                      ]}
+                    >
+                      <View style={[styles.catDot, { backgroundColor: g.color }]} />
+                      <Text style={[styles.categoryChipText, { color: theme.text }]}>{g.name}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
             )}
 
             {/* Category */}
@@ -184,11 +254,12 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
             <View style={styles.categoryRow}>
               <Pressable
                 onPress={() => setCategoryId(null)}
-                style={[
+                style={({ pressed }) => [
                   styles.categoryChip,
                   {
                     backgroundColor: categoryId === null ? theme.primaryBg : 'transparent',
                     borderColor: theme.border,
+                    opacity: pressed ? 0.7 : 1,
                   },
                 ]}
               >
@@ -198,11 +269,12 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
                 <Pressable
                   key={cat.id}
                   onPress={() => setCategoryId(cat.id)}
-                  style={[
+                  style={({ pressed }) => [
                     styles.categoryChip,
                     {
                       backgroundColor: categoryId === cat.id ? withAlpha(cat.color, 0.1) : 'transparent',
                       borderColor: categoryId === cat.id ? cat.color : theme.border,
+                      opacity: pressed ? 0.7 : 1,
                     },
                   ]}
                 >
@@ -261,11 +333,11 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
       <View style={styles.footer}>
         <Pressable
           onPress={handleSave}
-          style={[styles.saveButton, { backgroundColor: theme.primary }]}
+          style={({ pressed }) => [styles.saveButton, { backgroundColor: theme.primary, opacity: pressed ? 0.75 : 1 }]}
         >
           <Text style={styles.saveText}>保存</Text>
         </Pressable>
-        <Pressable onPress={handleDelete} hitSlop={spacing.md} style={styles.deleteButton}>
+        <Pressable onPress={handleDelete} hitSlop={spacing.md} style={({ pressed }) => [styles.deleteButton, { opacity: pressed ? 0.6 : 1 }]}>
           <Text style={[styles.deleteText, { color: theme.danger }]}>削除</Text>
         </Pressable>
       </View>
@@ -337,6 +409,22 @@ const styles = StyleSheet.create({
   },
   clearText: {
     ...typography.caption,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderRadius: radius.card,
+    marginTop: spacing.sm,
+    overflow: 'hidden',
+  },
+  pickerToolbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  pickerBtn: {
+    fontSize: 15,
   },
   categoryRow: {
     flexDirection: 'row',

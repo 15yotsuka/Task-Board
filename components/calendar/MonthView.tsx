@@ -17,7 +17,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../store/useAppStore';
 import { useThemeColors } from '../../lib/useTheme';
 import { Todo } from '../../store/types';
-import { radius } from '../../lib/theme';
+import { radius, spacing } from '../../lib/theme';
 
 const WEEKDAYS = ['月', '火', '水', '木', '金', '土', '日'];
 
@@ -31,6 +31,7 @@ export function MonthView({ currentMonth, onDayPress, selectedDate }: Props) {
   const theme = useThemeColors();
   const todos = useAppStore(useShallow((s) => s.todos));
   const categories = useAppStore(useShallow((s) => s.categories));
+  const groups = useAppStore(useShallow((s) => s.groups));
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -93,31 +94,42 @@ export function MonthView({ currentMonth, onDayPress, selectedDate }: Props) {
               <Pressable
                 key={d.toISOString()}
                 onPress={() => onDayPress(d)}
-                style={[
+                style={({ pressed }) => [
                   styles.dayCell,
-                  isSelected && { backgroundColor: theme.primaryBg, borderRadius: 8 },
+                  isSelected && !isToday && { backgroundColor: theme.primaryBg, borderRadius: radius.button },
+                  isSelected && isToday && { borderWidth: 2, borderColor: theme.primary, borderRadius: radius.button },
+                  { opacity: pressed ? 0.7 : 1 },
                 ]}
               >
-                <Text
+                <View
                   style={[
-                    styles.dayText,
-                    {
-                      color: isCurrentMonth ? theme.text : theme.secondaryText,
-                      opacity: isCurrentMonth ? 1 : 0.3,
-                    },
-                    isToday && { color: theme.primary, fontWeight: '700' },
+                    styles.dayInner,
+                    isToday && { backgroundColor: theme.primary, borderRadius: radius.pill },
                   ]}
                 >
-                  {format(d, 'd')}
-                </Text>
+                  <Text
+                    style={[
+                      styles.dayText,
+                      {
+                        color: isCurrentMonth ? theme.text : theme.secondaryText,
+                        opacity: isCurrentMonth ? 1 : 0.3,
+                      },
+                      isToday && { color: '#FFFFFF', fontWeight: '700', opacity: 1 },
+                    ]}
+                  >
+                    {format(d, 'd')}
+                  </Text>
+                </View>
                 {/* Dots */}
                 <View style={styles.dotRow}>
                   {dayTodos.slice(0, 3).map((t) => {
+                    const grp = groups.find((g) => g.id === t.groupId);
                     const cat = categories.find((c) => c.id === t.categoryId);
+                    const dotColor = grp?.color ?? cat?.color ?? theme.primary;
                     return (
                       <View
                         key={t.id}
-                        style={[styles.dot, { backgroundColor: cat?.color ?? theme.primary }]}
+                        style={[styles.dot, { backgroundColor: dotColor }]}
                       />
                     );
                   })}
@@ -136,11 +148,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md - 4,
   },
   weekdayRow: {
     flexDirection: 'row',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   weekdayText: {
     flex: 1,
@@ -156,6 +168,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 6,
     minHeight: 44,
+  },
+  dayInner: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dayText: {
     fontSize: 14,

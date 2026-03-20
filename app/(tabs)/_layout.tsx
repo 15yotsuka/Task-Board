@@ -1,6 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../../lib/useTheme';
 import { spacing, typography } from '../../lib/theme';
 
@@ -14,16 +15,17 @@ const TAB_ICONS: Record<string, { active: IoniconsName; inactive: IoniconsName }
 
 export default function TabLayout() {
   const theme = useThemeColors();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: theme.cardBg,
+          backgroundColor: theme.cardBg + 'F0',
           borderTopColor: theme.border,
-          height: 64,
-          paddingBottom: spacing.sm,
+          height: 56 + insets.bottom,
+          paddingBottom: insets.bottom,
         },
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.secondaryText,
