@@ -34,9 +34,9 @@ const SORT_OPTIONS: { key: SortMode; label: string }[] = [
 ];
 
 const FILTER_OPTIONS: { key: FilterMode; label: string }[] = [
+  { key: 'all', label: 'すべて' },
   { key: 'incomplete', label: '未完了' },
   { key: 'completed', label: '完了済み' },
-  { key: 'all', label: 'すべて' },
 ];
 
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
@@ -51,7 +51,7 @@ export default function TasksScreen() {
   const toggleComplete = useAppStore((s) => s.toggleComplete);
 
   const [sortMode, setSortMode] = useState<SortMode>('dueDate');
-  const [filterMode, setFilterMode] = useState<FilterMode>('incomplete');
+  const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
   const [filterGroupId, setFilterGroupId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -131,7 +131,19 @@ export default function TasksScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.pageBg, paddingTop: insets.top }]}>
-      <ScreenHeader title="タスク" subtitle="並べ替え・検索・全タスク管理" />
+      <ScreenHeader
+        title="タスク"
+        subtitle="並べ替え・検索・全タスク管理"
+        right={
+          <Pressable
+            onPress={() => setShowGroupManage(true)}
+            style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.5 : 1 }]}
+            hitSlop={10}
+          >
+            <Ionicons name="layers-outline" size={22} color={theme.secondaryText} />
+          </Pressable>
+        }
+      />
 
       {/* Sort chips */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chipContent}>
@@ -209,13 +221,6 @@ export default function TasksScreen() {
             <Text style={[styles.chipText, { color: theme.text }]}>{cat.name}</Text>
           </Pressable>
         ))}
-        <Pressable
-          onPress={() => setShowGroupManage(true)}
-          style={({ pressed }) => [styles.chip, { backgroundColor: theme.cardBg, borderColor: theme.border, opacity: pressed ? 0.7 : 1 }]}
-        >
-          <Ionicons name="layers-outline" size={14} color={theme.secondaryText} />
-          <Text style={[styles.chipText, { color: theme.secondaryText }]}>グループ</Text>
-        </Pressable>
       </ScrollView>
 
       {/* Task list */}
@@ -322,5 +327,8 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerBtn: {
+    padding: spacing.xs + 2,
   },
 });
