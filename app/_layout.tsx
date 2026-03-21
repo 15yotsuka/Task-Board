@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -8,16 +9,19 @@ import { useIsDark } from '../lib/useTheme';
 
 function AppContent() {
   const isDark = useIsDark();
-  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const overlayOpacity = useSharedValue(0);
   const prevIsDark = useRef(isDark);
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
 
   useEffect(() => {
     if (prevIsDark.current === isDark) return;
     prevIsDark.current = isDark;
-    Animated.sequence([
-      Animated.timing(overlayOpacity, { toValue: 0.2, duration: 180, useNativeDriver: true }),
-      Animated.timing(overlayOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
-    ]).start();
+    overlayOpacity.value = withTiming(0.2, { duration: 180 }, () => {
+      overlayOpacity.value = withTiming(0, { duration: 400 });
+    });
   }, [isDark]);
 
   return (
@@ -31,7 +35,8 @@ function AppContent() {
         pointerEvents="none"
         style={[
           StyleSheet.absoluteFillObject,
-          { backgroundColor: isDark ? '#000' : '#fff', opacity: overlayOpacity },
+          { backgroundColor: isDark ? '#000' : '#fff' },
+          overlayStyle,
         ]}
       />
     </>

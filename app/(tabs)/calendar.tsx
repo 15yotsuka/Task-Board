@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { addMonths, subMonths, addWeeks, subWeeks, parseISO, isValid, isSameDay } from 'date-fns';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../store/useAppStore';
 import { useThemeColors } from '../../lib/useTheme';
+import { useTranslation } from '../../lib/useTranslation';
 import { MonthView } from '../../components/calendar/MonthView';
 import { WeekView } from '../../components/calendar/WeekView';
 import { TaskDetailModal } from '../../components/tasks/TaskDetailModal';
@@ -12,6 +14,7 @@ import { TaskCard } from '../../components/tasks/TaskCard';
 import { Todo } from '../../store/types';
 import { radius, spacing } from '../../lib/theme';
 import { ScreenHeader } from '../../components/common/ScreenHeader';
+import { AdBanner } from '../../components/common/AdBanner';
 import { Ionicons } from '@expo/vector-icons';
 
 type ViewMode = 'month' | 'week';
@@ -19,6 +22,7 @@ type ViewMode = 'month' | 'week';
 export default function CalendarScreen() {
   const theme = useThemeColors();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const todos = useAppStore(useShallow((s) => s.todos));
   const toggleComplete = useAppStore((s) => s.toggleComplete);
 
@@ -27,12 +31,22 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
 
+  const calOpacity = useSharedValue(1);
+  const animatedCalStyle = useAnimatedStyle(() => ({ opacity: calOpacity.value }));
+
+  const animateNav = (updateFn: () => void) => {
+    calOpacity.value = withTiming(0, { duration: 120 }, () => {
+      runOnJS(updateFn)();
+      calOpacity.value = withTiming(1, { duration: 180 });
+    });
+  };
+
   const handlePrev = () => {
-    setCurrentDate((d) => (viewMode === 'month' ? subMonths(d, 1) : subWeeks(d, 1)));
+    animateNav(() => setCurrentDate((d) => (viewMode === 'month' ? subMonths(d, 1) : subWeeks(d, 1))));
   };
 
   const handleNext = () => {
-    setCurrentDate((d) => (viewMode === 'month' ? addMonths(d, 1) : addWeeks(d, 1)));
+    animateNav(() => setCurrentDate((d) => (viewMode === 'month' ? addMonths(d, 1) : addWeeks(d, 1))));
   };
 
   // Todos for selected date (month view)
@@ -47,7 +61,7 @@ export default function CalendarScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.pageBg, paddingTop: insets.top }]}>
       <ScreenHeader
-        title="カレンダー"
+        title={t('tab.calendar')}
         right={
           <View style={[styles.viewToggle, { borderColor: theme.primary }]}>
             <Pressable
@@ -62,7 +76,7 @@ export default function CalendarScreen() {
               ]}
             >
               <Text style={{ color: viewMode === 'month' ? '#FFF' : theme.primary, fontSize: 13, fontWeight: '600' }}>
-                月
+                {t('home.viewMonth')}
               </Text>
             </Pressable>
             <Pressable
@@ -77,7 +91,7 @@ export default function CalendarScreen() {
               ]}
             >
               <Text style={{ color: viewMode === 'week' ? '#FFF' : theme.primary, fontSize: 13, fontWeight: '600' }}>
-                週
+                {t('home.viewWeek')}
               </Text>
             </Pressable>
           </View>
@@ -86,37 +100,37 @@ export default function CalendarScreen() {
 
       {/* Navigation row */}
       <View style={styles.navRow}>
-        <Pressable onPress={handlePrev} style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]} hitSlop={8}>
+        <Pressable onPress={handlePrev} style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]} hitSlop={spacing.sm}>
           <Ionicons name="chevron-back" size={22} color={theme.primary} />
         </Pressable>
         <Pressable
-          onPress={() => setCurrentDate(new Date())}
+          onPress={() => animateNav(() => { setCurrentDate(new Date()); setSelectedDate(null); })}
           style={({ pressed }) => [styles.todayBtn, { borderColor: theme.primary, opacity: pressed ? 0.6 : 1 }]}
         >
-          <Text style={{ color: theme.primary, fontSize: 13, fontWeight: '600' }}>今日</Text>
+          <Text style={{ color: theme.primary, fontSize: 13, fontWeight: '600' }}>{t('common.today')}</Text>
         </Pressable>
-        <Pressable onPress={handleNext} style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]} hitSlop={8}>
+        <Pressable onPress={handleNext} style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]} hitSlop={spacing.sm}>
           <Ionicons name="chevron-forward" size={22} color={theme.primary} />
         </Pressable>
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: insets.bottom + 80 }}
+        contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: insets.bottom + spacing.tabBarOffset }}
       >
         {viewMode === 'month' ? (
           <>
-            <View style={[styles.calCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+            <Animated.View style={[styles.calCard, { backgroundColor: theme.cardBg, borderColor: theme.border }, animatedCalStyle]}>
               <MonthView
                 currentMonth={currentDate}
                 onDayPress={setSelectedDate}
                 selectedDate={selectedDate}
               />
-            </View>
+            </Animated.View>
             {/* Selected day's tasks */}
             {selectedDate && (
               <View style={styles.dayTasks}>
                 <Text style={[styles.dayTasksTitle, { color: theme.text }]}>
-                  選択日のタスク
+                  {t('cal.selectedDayTasks')}
                 </Text>
                 {selectedDayTodos.length > 0 ? (
                   selectedDayTodos.map((todo) => (
@@ -129,16 +143,16 @@ export default function CalendarScreen() {
                   ))
                 ) : (
                   <Text style={[styles.dayEmpty, { color: theme.secondaryText }]}>
-                    この日のタスクはありません
+                    {t('home.noTasksForDay')}
                   </Text>
                 )}
               </View>
             )}
           </>
         ) : (
-          <View style={[styles.calCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+          <Animated.View style={[styles.calCard, { backgroundColor: theme.cardBg, borderColor: theme.border }, animatedCalStyle]}>
             <WeekView currentWeek={currentDate} onTodoPress={setSelectedTodo} />
-          </View>
+          </Animated.View>
         )}
       </ScrollView>
 
@@ -147,6 +161,7 @@ export default function CalendarScreen() {
         visible={!!selectedTodo}
         onClose={() => setSelectedTodo(null)}
       />
+      <AdBanner />
     </View>
   );
 }
@@ -177,16 +192,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 24,
-    marginBottom: 8,
+    gap: spacing.lg,
+    marginBottom: spacing.sm,
   },
   navBtn: {
-    padding: 8,
+    padding: spacing.sm,
   },
   todayBtn: {
     paddingHorizontal: 14,
     paddingVertical: 5,
-    borderRadius: 999,
+    borderRadius: radius.pill,
     borderWidth: 1,
   },
   calCard: {

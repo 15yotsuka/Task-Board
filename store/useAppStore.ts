@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState, Todo, Category, Group, ThemeMode } from './types';
+import { AppState, Todo, Category, Group, ThemeMode, Language } from './types';
 
 const CURRENT_SCHEMA_VERSION = 2;
 
@@ -18,6 +18,9 @@ export const useAppStore = create<AppState>()(
       groups: [],
       schemaVersion: CURRENT_SCHEMA_VERSION,
       themeMode: 'system' as ThemeMode,
+      language: 'ja' as Language,
+      hasSeenTutorial: false,
+      adsRemoved: false,
 
       // === Todo Actions ===
       addTodo: (todoData) => {
@@ -46,6 +49,11 @@ export const useAppStore = create<AppState>()(
 
       deleteTodo: (id) => {
         set((state) => ({ todos: state.todos.filter((t) => t.id !== id) }));
+      },
+
+      deleteTodos: (ids) => {
+        const idSet = new Set(ids);
+        set((state) => ({ todos: state.todos.filter((t) => !idSet.has(t.id)) }));
       },
 
       toggleComplete: (id) => {
@@ -91,6 +99,18 @@ export const useAppStore = create<AppState>()(
 
       setThemeMode: (mode) => {
         set({ themeMode: mode });
+      },
+
+      setLanguage: (lang) => {
+        set({ language: lang });
+      },
+
+      setHasSeenTutorial: (seen) => {
+        set({ hasSeenTutorial: seen });
+      },
+
+      setAdsRemoved: (removed) => {
+        set({ adsRemoved: removed });
       },
 
       deleteCategory: (id) => {
@@ -151,6 +171,9 @@ export const useAppStore = create<AppState>()(
         groups: state.groups,
         schemaVersion: state.schemaVersion,
         themeMode: state.themeMode,
+        language: state.language,
+        hasSeenTutorial: state.hasSeenTutorial,
+        adsRemoved: state.adsRemoved,
       }),
     }
   )

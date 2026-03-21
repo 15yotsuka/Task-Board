@@ -23,14 +23,16 @@ export async function scheduleTaskNotification(
   title: string,
   dueDate: string,
   minutesBefore: number
-): Promise<string | null> {
+): Promise<boolean> {
   const due = parseISO(dueDate);
-  if (!isValid(due)) return null;
+  if (!isValid(due)) return false;
 
   const triggerDate = subMinutes(due, minutesBefore);
-  if (triggerDate <= new Date()) return null;
+  if (triggerDate <= new Date()) return false;
 
-  const identifier = await Notifications.scheduleNotificationAsync({
+  // todoId を identifier にすることで cancelTaskNotification が identifier 保存なしで動作する
+  await Notifications.scheduleNotificationAsync({
+    identifier: `todo-${todoId}`,
     content: {
       title: 'TaskBoard',
       body: title,
@@ -39,9 +41,13 @@ export async function scheduleTaskNotification(
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: triggerDate },
   });
 
-  return identifier;
+  return true;
 }
 
-export async function cancelTaskNotification(identifier: string) {
-  await Notifications.cancelScheduledNotificationAsync(identifier);
+export async function cancelTaskNotification(todoId: string) {
+  try {
+    await Notifications.cancelScheduledNotificationAsync(`todo-${todoId}`);
+  } catch {
+    // 通知が存在しない場合はエラーを無視
+  }
 }

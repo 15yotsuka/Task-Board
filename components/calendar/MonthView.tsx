@@ -12,14 +12,15 @@ import {
   parseISO,
   isValid,
 } from 'date-fns';
-import { ja } from 'date-fns/locale';
 import { useShallow } from 'zustand/react/shallow';
+import { useTranslation } from '../../lib/useTranslation';
 import { useAppStore } from '../../store/useAppStore';
 import { useThemeColors } from '../../lib/useTheme';
 import { Todo } from '../../store/types';
 import { radius, spacing } from '../../lib/theme';
 
-const WEEKDAYS = ['月', '火', '水', '木', '金', '土', '日'];
+const WEEKDAYS_JA = ['月', '火', '水', '木', '金', '土', '日'];
+const WEEKDAYS_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 interface Props {
   currentMonth: Date;
@@ -29,6 +30,8 @@ interface Props {
 
 export function MonthView({ currentMonth, onDayPress, selectedDate }: Props) {
   const theme = useThemeColors();
+  const { locale, language } = useTranslation();
+  const WEEKDAYS = language === 'en' ? WEEKDAYS_EN : WEEKDAYS_JA;
   const todos = useAppStore(useShallow((s) => s.todos));
   const categories = useAppStore(useShallow((s) => s.categories));
   const groups = useAppStore(useShallow((s) => s.groups));
@@ -63,7 +66,7 @@ export function MonthView({ currentMonth, onDayPress, selectedDate }: Props) {
     <View>
       {/* Month header */}
       <Text style={[styles.monthTitle, { color: theme.text }]}>
-        {format(currentMonth, 'yyyy年M月', { locale: ja })}
+        {format(currentMonth, language === 'en' ? 'MMMM yyyy' : 'yyyy年M月', { locale })}
       </Text>
 
       {/* Weekday headers */}

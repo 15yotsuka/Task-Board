@@ -7,6 +7,7 @@ import {
   endOfWeek,
   endOfMonth,
 } from 'date-fns';
+import type { Locale } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
 export type Section =
@@ -18,15 +19,6 @@ export type Section =
   | 'unset'
   | 'completed';
 
-export const sectionLabels: Record<Section, string> = {
-  overdue: '期限超過',
-  today: '今日',
-  thisWeek: '今週',
-  thisMonth: '今月',
-  later: 'それ以降',
-  unset: '未設定',
-  completed: '完了済み',
-};
 
 export function getSection(dueDate: string | null, isCompleted: boolean): Section {
   if (isCompleted) return 'completed';
@@ -46,25 +38,28 @@ export function getSection(dueDate: string | null, isCompleted: boolean): Sectio
   return 'later';
 }
 
-export function formatDate(dateStr: string | null): string {
+export function formatDate(dateStr: string | null, locale: Locale = ja): string {
   if (!dateStr) return '';
   const date = parseISO(dateStr);
   if (!isValid(date)) return '';
-  return format(date, 'M/d(E)', { locale: ja });
+  const pattern = locale?.code === 'ja' ? 'M/d(E)' : 'MMM d (EEE)';
+  return format(date, pattern, { locale });
 }
 
-export function formatDateTime(dateStr: string | null): string {
+export function formatDateTime(dateStr: string | null, locale: Locale = ja): string {
   if (!dateStr) return '';
   const date = parseISO(dateStr);
   if (!isValid(date)) return '';
-  return format(date, 'M/d(E) HH:mm', { locale: ja });
+  const pattern = locale?.code === 'ja' ? 'M/d(E) HH:mm' : 'MMM d (EEE) HH:mm';
+  return format(date, pattern, { locale });
 }
 
-export function formatFullDate(dateStr: string | null): string {
+export function formatFullDate(dateStr: string | null, locale: Locale = ja): string {
   if (!dateStr) return '';
   const date = parseISO(dateStr);
   if (!isValid(date)) return '';
-  return format(date, 'yyyy/M/d(E) HH:mm', { locale: ja });
+  const pattern = locale?.code === 'ja' ? 'yyyy/M/d(E) HH:mm' : 'MMM d, yyyy HH:mm';
+  return format(date, pattern, { locale });
 }
 
 export function isOverdue(dateStr: string | null): boolean {

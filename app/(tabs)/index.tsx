@@ -6,7 +6,7 @@ import {
   Pressable,
   StyleSheet,
 } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../store/useAppStore';
@@ -17,10 +17,12 @@ import { TaskDetailModal } from '../../components/tasks/TaskDetailModal';
 import { MonthView } from '../../components/calendar/MonthView';
 import { WeekView } from '../../components/calendar/WeekView';
 import { ScreenHeader } from '../../components/common/ScreenHeader';
+import { TutorialModal } from '../../components/common/TutorialModal';
+import { AdBanner } from '../../components/common/AdBanner';
 import { Ionicons } from '@expo/vector-icons';
 import { Todo } from '../../store/types';
 import { addMonths, subMonths, addWeeks, subWeeks, isSameDay, parseISO, isValid, format } from 'date-fns';
-import { ja } from 'date-fns/locale';
+import { useTranslation } from '../../lib/useTranslation';
 import { radius, spacing, shadow } from '../../lib/theme';
 
 type ViewMode = 'month' | 'week';
@@ -28,8 +30,11 @@ type ViewMode = 'month' | 'week';
 export default function HomeScreen() {
   const theme = useThemeColors();
   const insets = useSafeAreaInsets();
+  const { t, locale, language } = useTranslation();
   const todos = useAppStore(useShallow((s) => s.todos));
   const toggleComplete = useAppStore((s) => s.toggleComplete);
+  const hasSeenTutorial = useAppStore((s) => s.hasSeenTutorial);
+  const setHasSeenTutorial = useAppStore((s) => s.setHasSeenTutorial);
 
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -41,27 +46,33 @@ export default function HomeScreen() {
   const animatedCalStyle = useAnimatedStyle(() => ({ opacity: calOpacity.value }));
 
   const navigate = useCallback((dir: 1 | -1) => {
+    const doUpdate = () => {
+      setCurrentDate((d) =>
+        viewMode === 'month'
+          ? (dir === 1 ? addMonths(d, 1) : subMonths(d, 1))
+          : (dir === 1 ? addWeeks(d, 1) : subWeeks(d, 1))
+      );
+    };
     calOpacity.value = withTiming(0, { duration: 120 }, () => {
+      runOnJS(doUpdate)();
       calOpacity.value = withTiming(1, { duration: 180 });
     });
-    setCurrentDate((d) =>
-      viewMode === 'month'
-        ? (dir === 1 ? addMonths(d, 1) : subMonths(d, 1))
-        : (dir === 1 ? addWeeks(d, 1) : subWeeks(d, 1))
-    );
   }, [calOpacity, viewMode]);
 
   const goToday = useCallback(() => {
+    const doUpdate = () => {
+      setCurrentDate(new Date());
+      setSelectedDate(new Date());
+    };
     calOpacity.value = withTiming(0, { duration: 120 }, () => {
+      runOnJS(doUpdate)();
       calOpacity.value = withTiming(1, { duration: 180 });
     });
-    setCurrentDate(new Date());
-    setSelectedDate(new Date());
   }, [calOpacity]);
 
   const dayTasks = useMemo(() => {
     return todos.filter((t) => {
-      if (!t.dueDate) return false;
+      if (!t.dueDate || t.isCompleted) return false;
       const d = parseISO(t.dueDate);
       return isValid(d) && isSameDay(d, selectedDate);
     });
@@ -72,8 +83,7 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.pageBg, paddingTop: insets.top }]}>
       <ScreenHeader
-        title="ホーム"
-        subtitle="カレンダー＆デイリービュー"
+        title={t('tab.home')}
         right={
           <View style={[styles.viewToggle, { borderColor: theme.primary }]}>
             <Pressable
@@ -84,7 +94,7 @@ export default function HomeScreen() {
                 { backgroundColor: viewMode === 'month' ? theme.primary : 'transparent', opacity: pressed ? 0.8 : 1 },
               ]}
             >
-              <Text style={{ color: viewMode === 'month' ? '#FFF' : theme.primary, fontSize: 13, fontWeight: '600' }}>月</Text>
+              <Text style={{ color: viewMode === 'month' ? '#FFF' : theme.primary, fontSize: 13, fontWeight: '600' }}>{t('home.viewMonth')}</Text>
             </Pressable>
             <Pressable
               onPress={() => setViewMode('week')}
@@ -94,7 +104,7 @@ export default function HomeScreen() {
                 { backgroundColor: viewMode === 'week' ? theme.primary : 'transparent', opacity: pressed ? 0.8 : 1 },
               ]}
             >
-              <Text style={{ color: viewMode === 'week' ? '#FFF' : theme.primary, fontSize: 13, fontWeight: '600' }}>週</Text>
+              <Text style={{ color: viewMode === 'week' ? '#FFF' : theme.primary, fontSize: 13, fontWeight: '600' }}>{t('home.viewWeek')}</Text>
             </Pressable>
           </View>
         }
@@ -102,13 +112,13 @@ export default function HomeScreen() {
 
       {/* Navigation row */}
       <View style={styles.navRow}>
-        <Pressable onPress={() => navigate(-1)} style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]} hitSlop={8}>
+        <Pressable onPress={() => navigate(-1)} style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]} hitSlop={spacing.sm}>
           <Ionicons name="chevron-back" size={22} color={theme.primary} />
         </Pressable>
         <Pressable onPress={goToday} style={({ pressed }) => [styles.todayBtn, { borderColor: theme.primary, opacity: pressed ? 0.6 : 1 }]}>
-          <Text style={{ color: theme.primary, fontSize: 13, fontWeight: '600' }}>今日</Text>
+          <Text style={{ color: theme.primary, fontSize: 13, fontWeight: '600' }}>{t('common.today')}</Text>
         </Pressable>
-        <Pressable onPress={() => navigate(1)} style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]} hitSlop={8}>
+        <Pressable onPress={() => navigate(1)} style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.6 : 1 }]} hitSlop={spacing.sm}>
           <Ionicons name="chevron-forward" size={22} color={theme.primary} />
         </Pressable>
       </View>
@@ -136,7 +146,7 @@ export default function HomeScreen() {
         {viewMode === 'month' && (
           <View style={styles.daySection}>
             <Text style={[styles.daySectionTitle, { color: theme.text }]}>
-              {format(selectedDate, 'M月d日(E)', { locale: ja })} のタスク
+              {t('home.dayTasksTitle', { date: format(selectedDate, language === 'en' ? 'MMMM d (EEE)' : 'M月d日(E)', { locale }) })}
             </Text>
             {dayTasks.length > 0 ? (
               dayTasks.map((todo) => (
@@ -151,7 +161,7 @@ export default function HomeScreen() {
               <View style={styles.emptyWrap}>
                 <Ionicons name="checkmark-circle-outline" size={36} color={theme.border} />
                 <Text style={[styles.emptyText, { color: theme.secondaryText }]}>
-                  この日のタスクはありません
+                  {t('home.noTasksForDay')}
                 </Text>
               </View>
             )}
@@ -177,6 +187,8 @@ export default function HomeScreen() {
         visible={!!selectedTodo}
         onClose={() => setSelectedTodo(null)}
       />
+      <TutorialModal visible={!hasSeenTutorial} onComplete={() => setHasSeenTutorial(true)} />
+      <AdBanner />
     </View>
   );
 }
@@ -207,11 +219,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 24,
-    marginBottom: 8,
+    gap: spacing.lg,
+    marginBottom: spacing.sm,
   },
   navBtn: {
-    padding: 8,
+    padding: spacing.sm,
   },
   todayBtn: {
     paddingHorizontal: 14,

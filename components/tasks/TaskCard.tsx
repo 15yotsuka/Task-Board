@@ -16,9 +16,13 @@ interface Props {
   todo: Todo;
   onPress: (todo: Todo) => void;
   onToggleComplete?: (id: string) => void;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onLongPress?: () => void;
+  onSelect?: () => void;
 }
 
-export function TaskCard({ todo, onPress, onToggleComplete }: Props) {
+export function TaskCard({ todo, onPress, onToggleComplete, isSelectionMode, isSelected, onLongPress, onSelect }: Props) {
   const theme = useThemeColors();
   const scale = useSharedValue(1);
   const pressOpacity = useSharedValue(1);
@@ -62,11 +66,12 @@ export function TaskCard({ todo, onPress, onToggleComplete }: Props) {
   };
 
   return (
-    // Completion opacity on outer Pressable — keeps animated opacity on Animated.View clean
     <Pressable
-      onPress={() => onPress(todo)}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
+      onPress={isSelectionMode ? onSelect : () => onPress(todo)}
+      onPressIn={isSelectionMode ? undefined : handlePressIn}
+      onPressOut={isSelectionMode ? undefined : handlePressOut}
+      onLongPress={isSelectionMode ? undefined : onLongPress}
+      delayLongPress={400}
       style={{ opacity: todo.isCompleted ? 0.5 : 1 }}
     >
       <Animated.View
@@ -75,8 +80,9 @@ export function TaskCard({ todo, onPress, onToggleComplete }: Props) {
           animatedStyle,
           shadow.sm,
           {
-            backgroundColor: theme.cardBg,
-            borderColor: theme.border,
+            backgroundColor: isSelected ? withAlpha(theme.primary, 0.08) : theme.cardBg,
+            borderColor: isSelected ? theme.primary : theme.border,
+            borderWidth: isSelected ? 1.5 : StyleSheet.hairlineWidth,
           },
         ]}
       >
@@ -87,7 +93,8 @@ export function TaskCard({ todo, onPress, onToggleComplete }: Props) {
           {/* Row 1: Checkbox + Title + Date */}
           <View style={styles.topRow}>
             <Pressable
-              onPress={handleToggle}
+              onPress={isSelectionMode ? undefined : handleToggle}
+              disabled={isSelectionMode}
               hitSlop={spacing.md}
               style={[
                 styles.checkbox,
@@ -122,6 +129,19 @@ export function TaskCard({ todo, onPress, onToggleComplete }: Props) {
               >
                 {formatDate(todo.dueDate)}
               </Text>
+            )}
+            {isSelectionMode && (
+              <View
+                style={[
+                  styles.selCircle,
+                  {
+                    borderColor: isSelected ? theme.primary : theme.border,
+                    backgroundColor: isSelected ? theme.primary : 'transparent',
+                  },
+                ]}
+              >
+                {isSelected && <Text style={styles.selCheck}>✓</Text>}
+              </View>
             )}
           </View>
 
@@ -166,7 +186,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.md - 4,
     paddingVertical: spacing.sm + 2,
-    gap: 4,
+    gap: spacing.xs,
   },
   topRow: {
     flexDirection: 'row',
@@ -213,6 +233,21 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   groupPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  selCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    marginLeft: spacing.xs,
+  },
+  selCheck: {
+    color: '#FFF',
     fontSize: 11,
     fontWeight: '700',
   },

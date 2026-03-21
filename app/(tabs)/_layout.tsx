@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../../lib/useTheme';
+import { useTranslation } from '../../lib/useTranslation';
 import { spacing, typography } from '../../lib/theme';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
@@ -16,6 +17,7 @@ const TAB_ICONS: Record<string, { active: IoniconsName; inactive: IoniconsName }
 export default function TabLayout() {
   const theme = useThemeColors();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   return (
     <Tabs
@@ -35,7 +37,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'ホーム',
+          title: t('tab.home'),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name={focused ? TAB_ICONS.index.active : TAB_ICONS.index.inactive}
@@ -48,7 +50,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="tasks"
         options={{
-          title: 'タスク',
+          title: t('tab.tasks'),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name={focused ? TAB_ICONS.tasks.active : TAB_ICONS.tasks.inactive}
@@ -61,7 +63,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="calendar"
         options={{
-          title: 'カレンダー',
+          title: t('tab.calendar'),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name={focused ? TAB_ICONS.calendar.active : TAB_ICONS.calendar.inactive}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { radius, withAlpha } from '../../lib/theme';
+import { radius, spacing, withAlpha } from '../../lib/theme';
 
 interface Props {
   name: string;
@@ -17,7 +17,7 @@ export function CategoryPill({ name, color }: Props) {
 
 const styles = StyleSheet.create({
   pill: {
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: radius.pill,
   },

@@ -10,14 +10,15 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { parseISO, isValid, format } from 'date-fns';
-import { ja } from 'date-fns/locale';
 import { useShallow } from 'zustand/react/shallow';
 import { Todo, Priority } from '../../store/types';
 import { useAppStore } from '../../store/useAppStore';
 import { useThemeColors } from '../../lib/useTheme';
+import { useTranslation } from '../../lib/useTranslation';
 import { BottomSheet } from '../common/BottomSheet';
 import { formatFullDate } from '../../lib/dateUtils';
 import { priorityColors, radius, spacing, typography, withAlpha } from '../../lib/theme';
+import { requestNotificationPermission, scheduleTaskNotification, cancelTaskNotification } from '../../lib/notifications';
 
 interface Props {
   todo: Todo | null;
@@ -25,16 +26,18 @@ interface Props {
   onClose: () => void;
 }
 
-const TABS = ['基本情報', '通知', '詳細'] as const;
-const PRIORITY_OPTIONS: { key: Priority; label: string }[] = [
-  { key: 'high', label: '高' },
-  { key: 'medium', label: '中' },
-  { key: 'low', label: '低' },
-];
 
 export function TaskDetailModal({ todo, visible, onClose }: Props) {
   const theme = useThemeColors();
+  const { t, locale, language } = useTranslation();
   const updateTodo = useAppStore((s) => s.updateTodo);
+
+  const TABS = [t('task.tabBasic'), t('task.tabNotif'), t('task.tabDetail')];
+  const PRIORITY_OPTIONS: { key: Priority; label: string }[] = [
+    { key: 'high', label: t('priority.high') },
+    { key: 'medium', label: t('priority.medium') },
+    { key: 'low', label: t('priority.low') },
+  ];
   const deleteTodo = useAppStore((s) => s.deleteTodo);
   const categories = useAppStore(useShallow((s) => s.categories));
   const groups = useAppStore(useShallow((s) => s.groups));
@@ -75,6 +78,8 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
   const handleSave = () => {
     if (!title.trim()) return;
     const parsed = notifMinutes ? parseInt(notifMinutes, 10) : null;
+    const validMinutes = parsed && !isNaN(parsed) ? parsed : null;
+
     updateTodo(todo.id, {
       title: title.trim(),
       memo: memo.trim(),
@@ -82,20 +87,33 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
       categoryId,
       groupId,
       dueDate: dueDate ? dueDate.toISOString() : null,
-      notificationMinutesBefore: parsed && !isNaN(parsed) ? parsed : null,
+      notificationMinutesBefore: validMinutes,
     });
+
+    // モーダルを先に閉じてからバックグラウンドで通知を処理
     onClose();
+
+    void (async () => {
+      await cancelTaskNotification(todo.id);
+      if (dueDate && validMinutes) {
+        const granted = await requestNotificationPermission();
+        if (granted) {
+          await scheduleTaskNotification(todo.id, title.trim(), dueDate.toISOString(), validMinutes);
+        }
+      }
+    })();
   };
 
   const handleDelete = () => {
-    Alert.alert('タスクを削除', `「${todo.title}」を削除しますか？`, [
-      { text: 'キャンセル', style: 'cancel' },
+    Alert.alert(t('task.deleteAlert.title'), t('task.deleteAlert.message', { title: todo.title }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: '削除',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: () => {
           deleteTodo(todo.id);
           onClose();
+          void cancelTaskNotification(todo.id);
         },
       },
     ]);
@@ -108,7 +126,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
         style={[styles.titleInput, { color: theme.text, borderColor: theme.border }]}
         value={title}
         onChangeText={setTitle}
-        placeholder="タスク名"
+        placeholder={t('addTask.titlePlaceholder')}
         placeholderTextColor={theme.secondaryText}
       />
 
@@ -161,7 +179,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
         {activeTab === 0 && (
           <>
             {/* Due date */}
-            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>締切日時</Text>
+            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>{t('common.dueDate')}</Text>
             <Pressable
               onPress={() => {
                 const base = dueDate ?? new Date();
@@ -172,12 +190,12 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
               style={({ pressed }) => [styles.dateButton, { borderColor: theme.border, backgroundColor: theme.pageBg, opacity: pressed ? 0.7 : 1 }]}
             >
               <Text style={[styles.dateText, { color: dueDate ? theme.text : theme.secondaryText }]}>
-                {dueDate ? format(dueDate, 'M月d日(E) HH:mm', { locale: ja }) : '日時を選択'}
+                {dueDate ? format(dueDate, language === 'en' ? 'MMM d (EEE) HH:mm' : 'M月d日(E) HH:mm', { locale }) : t('common.selectDateTime')}
               </Text>
             </Pressable>
             {dueDate && !showDatePicker && (
               <Pressable onPress={() => setDueDate(null)} hitSlop={spacing.sm} style={({ pressed }) => [styles.clearButton, { opacity: pressed ? 0.6 : 1 }]}>
-                <Text style={[styles.clearText, { color: theme.danger }]}>日時をクリア</Text>
+                <Text style={[styles.clearText, { color: theme.danger }]}>{t('common.clearDateTime')}</Text>
               </Pressable>
             )}
             {showDatePicker && Platform.OS === 'ios' && (
@@ -187,7 +205,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
                     onPress={() => setShowDatePicker(false)}
                     style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
                   >
-                    <Text style={[styles.pickerBtn, { color: theme.secondaryText }]}>キャンセル</Text>
+                    <Text style={[styles.pickerBtn, { color: theme.secondaryText }]}>{t('common.cancel')}</Text>
                   </Pressable>
                   <Pressable
                     onPress={() => {
@@ -198,7 +216,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
                     }}
                     style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
                   >
-                    <Text style={[styles.pickerBtn, { color: theme.primary, fontWeight: '600' }]}>確認</Text>
+                    <Text style={[styles.pickerBtn, { color: theme.primary, fontWeight: '600' }]}>{t('common.confirm')}</Text>
                   </Pressable>
                 </View>
                 <DateTimePicker
@@ -206,7 +224,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
                   mode="date"
                   display="inline"
                   onChange={(_, date) => { if (date) setPendingDate(date); }}
-                  locale="ja"
+                  locale={language === 'en' ? 'en' : 'ja'}
                 />
                 <View style={[styles.timeSeparator, { borderTopColor: theme.border }]} />
                 <DateTimePicker
@@ -214,7 +232,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
                   mode="time"
                   display="spinner"
                   onChange={(_, time) => { if (time) setPendingTime(time); }}
-                  locale="ja"
+                  locale={language === 'en' ? 'en' : 'ja'}
                 />
               </View>
             )}
@@ -248,7 +266,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
             {/* Group */}
             {groups.length > 0 && (
               <>
-                <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>グループ</Text>
+                <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>{t('common.group')}</Text>
                 <View style={styles.categoryRow}>
                   <Pressable
                     onPress={() => setGroupId(null)}
@@ -261,7 +279,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
                       },
                     ]}
                   >
-                    <Text style={[styles.categoryChipText, { color: theme.text }]}>なし</Text>
+                    <Text style={[styles.categoryChipText, { color: theme.text }]}>{t('common.none')}</Text>
                   </Pressable>
                   {groups.map((g) => (
                     <Pressable
@@ -285,7 +303,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
             )}
 
             {/* Category */}
-            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>カテゴリ</Text>
+            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>{t('common.category')}</Text>
             <View style={styles.categoryRow}>
               <Pressable
                 onPress={() => setCategoryId(null)}
@@ -298,7 +316,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
                   },
                 ]}
               >
-                <Text style={[styles.categoryChipText, { color: theme.text }]}>なし</Text>
+                <Text style={[styles.categoryChipText, { color: theme.text }]}>{t('common.none')}</Text>
               </Pressable>
               {categories.map((cat) => (
                 <Pressable
@@ -320,12 +338,12 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
             </View>
 
             {/* Memo */}
-            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>メモ</Text>
+            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>{t('common.memo')}</Text>
             <TextInput
               style={[styles.memoInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.pageBg }]}
               value={memo}
               onChangeText={setMemo}
-              placeholder="メモ"
+              placeholder={t('common.memo')}
               placeholderTextColor={theme.secondaryText}
               multiline
             />
@@ -334,7 +352,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
 
         {activeTab === 1 && (
           <>
-            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>通知タイミング</Text>
+            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>{t('task.notifTiming')}</Text>
             <View style={styles.notifRow}>
               <TextInput
                 style={[styles.notifInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.pageBg }]}
@@ -344,22 +362,21 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
                 placeholder="30"
                 placeholderTextColor={theme.secondaryText}
               />
-              <Text style={[styles.notifUnit, { color: theme.text }]}>分前に通知</Text>
+              <Text style={[styles.notifUnit, { color: theme.text }]}>{t('task.notifUnit')}</Text>
             </View>
             <Text style={[styles.notifHint, { color: theme.secondaryText }]}>
-              締切日時が設定されている場合のみ有効です。{'\n'}
-              例: 30 = 30分前、60 = 1時間前、1440 = 1日前
+              {t('task.notifHint')}
             </Text>
           </>
         )}
 
         {activeTab === 2 && (
           <>
-            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>作成日時</Text>
-            <Text style={[styles.detailText, { color: theme.text }]}>{formatFullDate(todo.createdAt)}</Text>
+            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>{t('task.createdAt')}</Text>
+            <Text style={[styles.detailText, { color: theme.text }]}>{formatFullDate(todo.createdAt, locale)}</Text>
 
-            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>更新日時</Text>
-            <Text style={[styles.detailText, { color: theme.text }]}>{formatFullDate(todo.updatedAt)}</Text>
+            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>{t('task.updatedAt')}</Text>
+            <Text style={[styles.detailText, { color: theme.text }]}>{formatFullDate(todo.updatedAt, locale)}</Text>
           </>
         )}
       </View>
@@ -370,10 +387,10 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
           onPress={handleSave}
           style={({ pressed }) => [styles.saveButton, { backgroundColor: theme.primary, opacity: pressed ? 0.75 : 1 }]}
         >
-          <Text style={styles.saveText}>保存</Text>
+          <Text style={styles.saveText}>{t('common.save')}</Text>
         </Pressable>
         <Pressable onPress={handleDelete} hitSlop={spacing.md} style={({ pressed }) => [styles.deleteButton, { opacity: pressed ? 0.6 : 1 }]}>
-          <Text style={[styles.deleteText, { color: theme.danger }]}>削除</Text>
+          <Text style={[styles.deleteText, { color: theme.danger }]}>{t('common.delete')}</Text>
         </Pressable>
       </View>
     </BottomSheet>

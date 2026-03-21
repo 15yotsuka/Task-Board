@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,8 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
 import { useShallow } from 'zustand/react/shallow';
+import { useTranslation } from '../../lib/useTranslation';
 import { useAppStore } from '../../store/useAppStore';
 import { useThemeColors } from '../../lib/useTheme';
 import { BottomSheet } from '../common/BottomSheet';
@@ -23,15 +23,17 @@ interface Props {
   onClose: () => void;
 }
 
-const PRIORITY_OPTIONS: { key: Priority; label: string }[] = [
-  { key: 'high', label: '高' },
-  { key: 'medium', label: '中' },
-  { key: 'low', label: '低' },
-];
 
 export function AddTaskForm({ visible, onClose }: Props) {
   const theme = useThemeColors();
+  const { t, locale, language } = useTranslation();
   const addTodo = useAppStore((s) => s.addTodo);
+
+  const PRIORITY_OPTIONS: { key: Priority; label: string }[] = [
+    { key: 'high', label: t('priority.high') },
+    { key: 'medium', label: t('priority.medium') },
+    { key: 'low', label: t('priority.low') },
+  ];
   const categories = useAppStore(useShallow((s) => s.categories));
   const groups = useAppStore(useShallow((s) => s.groups));
 
@@ -60,6 +62,11 @@ export function AddTaskForm({ visible, onClose }: Props) {
     setPendingTime(new Date());
   };
 
+  // オープン時に前回の入力をリセット（クローズアニメーション中のブランクフラッシュを防ぐ）
+  useEffect(() => {
+    if (visible) reset();
+  }, [visible]);
+
   const handleSave = () => {
     if (!title.trim()) return;
     addTodo({
@@ -80,12 +87,12 @@ export function AddTaskForm({ visible, onClose }: Props) {
   return (
     <>
     <BottomSheet visible={visible} onClose={onClose}>
-      <Text style={[styles.heading, { color: theme.text }]}>タスク追加</Text>
+      <Text style={[styles.heading, { color: theme.text }]}>{t('addTask.heading')}</Text>
 
       {/* Title */}
       <TextInput
         style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.pageBg }]}
-        placeholder="タスク名"
+        placeholder={t('addTask.titlePlaceholder')}
         placeholderTextColor={theme.secondaryText}
         value={title}
         onChangeText={setTitle}
@@ -94,7 +101,7 @@ export function AddTaskForm({ visible, onClose }: Props) {
       {/* Memo */}
       <TextInput
         style={[styles.input, styles.memoInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.pageBg }]}
-        placeholder="メモ（任意）"
+        placeholder={t('addTask.memoPlaceholder')}
         placeholderTextColor={theme.secondaryText}
         value={memo}
         onChangeText={setMemo}
@@ -102,7 +109,7 @@ export function AddTaskForm({ visible, onClose }: Props) {
       />
 
       {/* Priority */}
-      <Text style={[styles.label, { color: theme.secondaryText }]}>優先度</Text>
+      <Text style={[styles.label, { color: theme.secondaryText }]}>{t('common.priority')}</Text>
       <View style={styles.priorityRow}>
         {PRIORITY_OPTIONS.map((opt) => {
           const selected = priority === opt.key;
@@ -130,9 +137,9 @@ export function AddTaskForm({ visible, onClose }: Props) {
       {/* Group */}
       <>
         <View style={styles.labelRow}>
-          <Text style={[styles.label, { color: theme.secondaryText }]}>グループ</Text>
+          <Text style={[styles.label, { color: theme.secondaryText }]}>{t('common.group')}</Text>
           <Pressable onPress={() => setShowGroupCreate(true)} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-            <Text style={[styles.labelAction, { color: theme.primary }]}>＋ 新規グループ</Text>
+            <Text style={[styles.labelAction, { color: theme.primary }]}>{t('addTask.newGroup')}</Text>
           </Pressable>
         </View>
         {groups.length > 0 && (
@@ -148,7 +155,7 @@ export function AddTaskForm({ visible, onClose }: Props) {
                 },
               ]}
             >
-              <Text style={{ color: theme.text, fontSize: 13 }}>なし</Text>
+              <Text style={{ color: theme.text, fontSize: 13 }}>{t('common.none')}</Text>
             </Pressable>
             {groups.map((g) => (
               <Pressable
@@ -174,7 +181,7 @@ export function AddTaskForm({ visible, onClose }: Props) {
       {/* Category */}
       {categories.length > 0 && (
         <>
-          <Text style={[styles.label, { color: theme.secondaryText }]}>カテゴリ</Text>
+          <Text style={[styles.label, { color: theme.secondaryText }]}>{t('common.category')}</Text>
           <View style={styles.categoryRow}>
             <Pressable
               onPress={() => setCategoryId(null)}
@@ -187,7 +194,7 @@ export function AddTaskForm({ visible, onClose }: Props) {
                 },
               ]}
             >
-              <Text style={{ color: theme.text, fontSize: 13 }}>なし</Text>
+              <Text style={{ color: theme.text, fontSize: 13 }}>{t('common.none')}</Text>
             </Pressable>
             {categories.map((cat) => (
               <Pressable
@@ -211,7 +218,7 @@ export function AddTaskForm({ visible, onClose }: Props) {
       )}
 
       {/* Due Date */}
-      <Text style={[styles.label, { color: theme.secondaryText }]}>締切日時</Text>
+      <Text style={[styles.label, { color: theme.secondaryText }]}>{t('common.dueDate')}</Text>
       <Pressable
         onPress={() => {
           const base = dueDate ?? new Date();
@@ -222,12 +229,12 @@ export function AddTaskForm({ visible, onClose }: Props) {
         style={({ pressed }) => [styles.dateButton, { borderColor: theme.border, backgroundColor: theme.pageBg, opacity: pressed ? 0.7 : 1 }]}
       >
         <Text style={{ color: dueDate ? theme.text : theme.secondaryText, fontSize: 15 }}>
-          {dueDate ? format(dueDate, 'M月d日(E) HH:mm', { locale: ja }) : '日時を選択'}
+          {dueDate ? format(dueDate, language === 'en' ? 'MMM d (EEE) HH:mm' : 'M月d日(E) HH:mm', { locale }) : t('common.selectDateTime')}
         </Text>
       </Pressable>
       {dueDate && !showDatePicker && (
         <Pressable onPress={() => setDueDate(null)} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-          <Text style={{ color: theme.danger, fontSize: 13, marginTop: 4 }}>日時をクリア</Text>
+          <Text style={{ color: theme.danger, fontSize: 13, marginTop: spacing.xs }}>{t('common.clearDateTime')}</Text>
         </Pressable>
       )}
 
@@ -238,7 +245,7 @@ export function AddTaskForm({ visible, onClose }: Props) {
               onPress={() => setShowDatePicker(false)}
               style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
             >
-              <Text style={[styles.pickerToolbarBtn, { color: theme.secondaryText }]}>キャンセル</Text>
+              <Text style={[styles.pickerToolbarBtn, { color: theme.secondaryText }]}>{t('common.cancel')}</Text>
             </Pressable>
             <Pressable
               onPress={() => {
@@ -249,7 +256,7 @@ export function AddTaskForm({ visible, onClose }: Props) {
               }}
               style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
             >
-              <Text style={[styles.pickerToolbarBtn, { color: theme.primary, fontWeight: '600' }]}>確認</Text>
+              <Text style={[styles.pickerToolbarBtn, { color: theme.primary, fontWeight: '600' }]}>{t('common.confirm')}</Text>
             </Pressable>
           </View>
           <DateTimePicker
@@ -257,7 +264,7 @@ export function AddTaskForm({ visible, onClose }: Props) {
             mode="date"
             display="inline"
             onChange={(_, date) => { if (date) setPendingDate(date); }}
-            locale="ja"
+            locale={language === 'en' ? 'en' : 'ja'}
           />
           <View style={[styles.timeSeparator, { borderTopColor: theme.border }]} />
           <DateTimePicker
@@ -265,7 +272,7 @@ export function AddTaskForm({ visible, onClose }: Props) {
             mode="time"
             display="spinner"
             onChange={(_, time) => { if (time) setPendingTime(time); }}
-            locale="ja"
+            locale={language === 'en' ? 'en' : 'ja'}
           />
         </View>
       )}
@@ -305,7 +312,7 @@ export function AddTaskForm({ visible, onClose }: Props) {
         style={({ pressed }) => [styles.saveButton, { backgroundColor: theme.primary, opacity: !title.trim() ? 0.5 : pressed ? 0.75 : 1 }]}
         disabled={!title.trim()}
       >
-        <Text style={styles.saveText}>追加</Text>
+        <Text style={styles.saveText}>{t('common.add')}</Text>
       </Pressable>
     </BottomSheet>
     <GroupManageSheet visible={showGroupCreate} onClose={() => setShowGroupCreate(false)} />
@@ -317,22 +324,22 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 20,
     fontWeight: '700',
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
   },
   input: {
     borderWidth: 1,
     borderRadius: radius.input,
-    padding: 14,
+    padding: spacing.md - 2,
     fontSize: 16,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   memoInput: {
     minHeight: 60,
@@ -340,11 +347,11 @@ const styles = StyleSheet.create({
   },
   priorityRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.sm,
   },
   priorityChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: radius.button,
   },
   priorityText: {
@@ -354,28 +361,28 @@ const styles = StyleSheet.create({
   categoryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: spacing.md - 4,
+    paddingVertical: spacing.xs + 2,
     borderRadius: radius.button,
     borderWidth: 1,
   },
   catDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: spacing.sm,
+    height: spacing.sm,
+    borderRadius: spacing.xs,
   },
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
   },
   labelAction: {
     fontSize: 13,
@@ -384,7 +391,7 @@ const styles = StyleSheet.create({
   dateButton: {
     borderWidth: 1,
     borderRadius: radius.input,
-    padding: 14,
+    padding: spacing.md - 2,
   },
   pickerContainer: {
     borderWidth: 1,
@@ -406,11 +413,11 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   saveButton: {
-    marginTop: 24,
+    marginTop: spacing.lg,
     borderRadius: radius.button,
-    paddingVertical: 14,
+    paddingVertical: spacing.md - 2,
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   saveText: {
     color: '#FFFFFF',

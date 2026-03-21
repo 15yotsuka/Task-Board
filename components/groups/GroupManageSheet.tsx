@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '../../store/useAppStore';
 import { useThemeColors } from '../../lib/useTheme';
+import { useTranslation } from '../../lib/useTranslation';
 import { BottomSheet } from '../common/BottomSheet';
 import { Group } from '../../store/types';
 import { radius, spacing, withAlpha } from '../../lib/theme';
@@ -27,6 +28,7 @@ interface Props {
 
 export function GroupManageSheet({ visible, onClose }: Props) {
   const theme = useThemeColors();
+  const { t } = useTranslation();
   const groups = useAppStore(useShallow((s) => s.groups));
   const addGroup = useAppStore((s) => s.addGroup);
   const updateGroup = useAppStore((s) => s.updateGroup);
@@ -36,6 +38,16 @@ export function GroupManageSheet({ visible, onClose }: Props) {
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState(PRESET_COLORS[0]);
   const [isAdding, setIsAdding] = useState(false);
+
+  // オープン時に入力途中のフォーム状態をリセット（クローズアニメーション中のブランクフラッシュを防ぐ）
+  useEffect(() => {
+    if (visible) {
+      setIsAdding(false);
+      setEditingGroup(null);
+      setNewName('');
+      setNewColor(PRESET_COLORS[0]);
+    }
+  }, [visible]);
 
   const handleAdd = () => {
     if (!newName.trim()) return;
@@ -53,12 +65,12 @@ export function GroupManageSheet({ visible, onClose }: Props) {
 
   const handleDelete = (group: Group) => {
     Alert.alert(
-      'グループを削除',
-      `「${group.name}」を削除しますか？\n関連タスクのグループ設定が解除されます。`,
+      t('group.deleteAlert.title'),
+      t('group.deleteAlert.message', { name: group.name }),
       [
-        { text: 'キャンセル', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: '削除',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => deleteGroup(group.id),
         },
@@ -69,7 +81,7 @@ export function GroupManageSheet({ visible, onClose }: Props) {
   return (
     <BottomSheet visible={visible} onClose={onClose}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.text }]}>グループ管理</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('group.manage')}</Text>
         <Pressable
           onPress={() => { setIsAdding(true); setEditingGroup(null); }}
           style={({ pressed }) => [styles.addBtn, { backgroundColor: theme.primary, opacity: pressed ? 0.7 : 1 }]}
@@ -83,7 +95,7 @@ export function GroupManageSheet({ visible, onClose }: Props) {
         <View style={[styles.editBox, { backgroundColor: theme.pageBg, borderColor: theme.border }]}>
           <TextInput
             style={[styles.nameInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.cardBg }]}
-            placeholder="グループ名 (例: 就活、学校、課題)"
+            placeholder={t('group.namePlaceholder')}
             placeholderTextColor={theme.secondaryText}
             value={newName}
             onChangeText={setNewName}
@@ -104,14 +116,14 @@ export function GroupManageSheet({ visible, onClose }: Props) {
           </View>
           <View style={styles.editActions}>
             <Pressable onPress={() => setIsAdding(false)} style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.6 : 1 }]}>
-              <Text style={[styles.cancelText, { color: theme.secondaryText }]}>キャンセル</Text>
+              <Text style={[styles.cancelText, { color: theme.secondaryText }]}>{t('common.cancel')}</Text>
             </Pressable>
             <Pressable
               onPress={handleAdd}
               style={({ pressed }) => [styles.saveBtn, { backgroundColor: theme.primary, opacity: !newName.trim() ? 0.5 : pressed ? 0.75 : 1 }]}
               disabled={!newName.trim()}
             >
-              <Text style={styles.saveBtnText}>追加</Text>
+              <Text style={styles.saveBtnText}>{t('common.add')}</Text>
             </Pressable>
           </View>
         </View>
@@ -120,7 +132,7 @@ export function GroupManageSheet({ visible, onClose }: Props) {
       {/* Group list */}
       {groups.length === 0 && !isAdding ? (
         <Text style={[styles.empty, { color: theme.secondaryText }]}>
-          グループがありません。+ ボタンで追加してください。
+          {t('group.empty')}
         </Text>
       ) : (
         <View>
@@ -131,7 +143,7 @@ export function GroupManageSheet({ visible, onClose }: Props) {
                   <TextInput
                     style={[styles.nameInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.cardBg }]}
                     value={editingGroup.name}
-                    onChangeText={(t) => setEditingGroup({ ...editingGroup, name: t })}
+                    onChangeText={(val) => setEditingGroup({ ...editingGroup, name: val })}
                     autoFocus
                   />
                   <View style={styles.colorRow}>
@@ -149,13 +161,13 @@ export function GroupManageSheet({ visible, onClose }: Props) {
                   </View>
                   <View style={styles.editActions}>
                     <Pressable onPress={() => setEditingGroup(null)} style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.6 : 1 }]}>
-                      <Text style={[styles.cancelText, { color: theme.secondaryText }]}>キャンセル</Text>
+                      <Text style={[styles.cancelText, { color: theme.secondaryText }]}>{t('common.cancel')}</Text>
                     </Pressable>
                     <Pressable
                       onPress={handleSaveEdit}
                       style={({ pressed }) => [styles.saveBtn, { backgroundColor: theme.primary, opacity: pressed ? 0.75 : 1 }]}
                     >
-                      <Text style={styles.saveBtnText}>保存</Text>
+                      <Text style={styles.saveBtnText}>{t('common.save')}</Text>
                     </Pressable>
                   </View>
                 </View>

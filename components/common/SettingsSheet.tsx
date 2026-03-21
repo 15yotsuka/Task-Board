@@ -9,16 +9,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAppStore } from '../../store/useAppStore';
 import { useThemeColors } from '../../lib/useTheme';
+import { useTranslation } from '../../lib/useTranslation';
 import { BottomSheet } from './BottomSheet';
 import { GroupManageSheet } from '../groups/GroupManageSheet';
-import { ThemeMode } from '../../store/types';
+import { ThemeMode, Language } from '../../store/types';
 import { radius, spacing, shadow } from '../../lib/theme';
+import { useIAP } from '../../lib/useIAP';
 
-const THEME_OPTIONS: { key: ThemeMode; label: string; icon: string }[] = [
-  { key: 'light', label: 'ライト', icon: 'sunny-outline' },
-  { key: 'dark', label: 'ダーク', icon: 'moon-outline' },
-  { key: 'system', label: 'システム', icon: 'phone-portrait-outline' },
-];
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
 interface Props {
   visible: boolean;
@@ -27,17 +25,89 @@ interface Props {
 
 export function SettingsSheet({ visible, onClose }: Props) {
   const theme = useThemeColors();
+  const { t } = useTranslation();
   const themeMode = useAppStore((s) => s.themeMode);
   const setThemeMode = useAppStore((s) => s.setThemeMode);
+  const language = useAppStore((s) => s.language);
+  const setLanguage = useAppStore((s) => s.setLanguage);
+  const addGroup = useAppStore((s) => s.addGroup);
+  const addTodo = useAppStore((s) => s.addTodo);
   const [showGroups, setShowGroups] = useState(false);
+  const { adsRemoved, loading: iapLoading, purchase, restore } = useIAP();
+
+  const handleAddSample = () => {
+    const now = new Date();
+    const fmt = (d: Date) => d.toISOString().split('T')[0];
+    const day = (n: number) => {
+      const d = new Date(now);
+      d.setDate(d.getDate() + n);
+      return fmt(d);
+    };
+
+    const isEn = language === 'en';
+
+    // グループ追加
+    const groupWork    = { name: isEn ? 'Work'     : '仕事',        color: '#007AFF' };
+    const groupPrivate = { name: isEn ? 'Personal' : 'プライベート', color: '#34C759' };
+    const groupStudy   = { name: isEn ? 'Study'    : '勉強',        color: '#FF9500' };
+    addGroup(groupWork);
+    addGroup(groupPrivate);
+    addGroup(groupStudy);
+
+    // タスク追加（グループIDは追加後に取れないので null で追加）
+    const sampleTodos = isEn ? [
+      { title: 'Submit weekly report',        priority: 'high' as const,   dueDate: day(1) },
+      { title: 'Prepare for team meeting',    priority: 'medium' as const, dueDate: day(2) },
+      { title: 'Reply to emails in bulk',     priority: 'low' as const,    dueDate: day(0) },
+      { title: 'Make a shopping list',        priority: 'low' as const,    dueDate: day(1) },
+      { title: 'Exercise for 30 minutes',     priority: 'medium' as const, dueDate: day(0) },
+      { title: 'Memorize 20 vocabulary words',priority: 'medium' as const, dueDate: day(3) },
+      { title: 'Read React Native docs',      priority: 'high' as const,   dueDate: day(5) },
+    ] : [
+      { title: '週次レポートを提出する',           priority: 'high' as const,   dueDate: day(1) },
+      { title: 'チームミーティングの準備',          priority: 'medium' as const, dueDate: day(2) },
+      { title: 'メールの返信をまとめてする',         priority: 'low' as const,    dueDate: day(0) },
+      { title: '買い物リストを作る',               priority: 'low' as const,    dueDate: day(1) },
+      { title: '運動 30 分',                    priority: 'medium' as const, dueDate: day(0) },
+      { title: '英単語を 20 個覚える',             priority: 'medium' as const, dueDate: day(3) },
+      { title: 'React Native のドキュメントを読む', priority: 'high' as const,   dueDate: day(5) },
+    ];
+
+    sampleTodos.forEach((s, i) => {
+      addTodo({
+        title: s.title,
+        memo: '',
+        dueDate: s.dueDate,
+        priority: s.priority,
+        categoryId: null,
+        groupId: null,
+        isCompleted: false,
+        orderIndex: i,
+        notificationMinutesBefore: null,
+      });
+    });
+
+    Alert.alert(t('settings.addSampleDone'));
+  };
+
+  const THEME_OPTIONS: { key: ThemeMode; label: string; icon: IoniconsName }[] = [
+    { key: 'light', label: t('settings.themeLight'), icon: 'sunny-outline' },
+    { key: 'dark', label: t('settings.themeDark'), icon: 'moon-outline' },
+    { key: 'system', label: t('settings.themeSystem'), icon: 'phone-portrait-outline' },
+  ];
+
+  const LANGUAGE_OPTIONS: { key: Language; label: string }[] = [
+    { key: 'ja', label: '日本語' },
+    { key: 'en', label: 'English' },
+  ];
 
   return (
     <>
       <BottomSheet visible={visible} onClose={onClose}>
-        <Text style={[styles.title, { color: theme.text }]}>設定</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('settings.title')}</Text>
 
         {/* Theme */}
-        <Text style={[styles.sectionLabel, { color: theme.secondaryText }]}>テーマ</Text>
+        <Text style={[styles.sectionLabel, { color: theme.secondaryText }]}>{t('settings.theme')}</Text>
         <View style={styles.themeRow}>
           {THEME_OPTIONS.map((opt) => {
             const active = themeMode === opt.key;
@@ -56,7 +126,7 @@ export function SettingsSheet({ visible, onClose }: Props) {
                 ]}
               >
                 <Ionicons
-                  name={opt.icon as any}
+                  name={opt.icon}
                   size={16}
                   color={active ? '#FFF' : theme.secondaryText}
                 />
@@ -68,26 +138,84 @@ export function SettingsSheet({ visible, onClose }: Props) {
           })}
         </View>
 
+        {/* Language */}
+        <Text style={[styles.sectionLabel, { color: theme.secondaryText }]}>{t('settings.language')}</Text>
+        <View style={styles.themeRow}>
+          {LANGUAGE_OPTIONS.map((opt) => {
+            const active = language === opt.key;
+            return (
+              <Pressable
+                key={opt.key}
+                onPress={() => setLanguage(opt.key)}
+                style={({ pressed }) => [
+                  styles.themeChip,
+                  {
+                    backgroundColor: active ? theme.primary : theme.cardBg,
+                    borderColor: active ? theme.primary : theme.border,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                  !active && shadow.sm,
+                ]}
+              >
+                <Text style={[styles.themeChipText, { color: active ? '#FFF' : theme.text }]}>
+                  {opt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         {/* Groups */}
-        <Text style={[styles.sectionLabel, { color: theme.secondaryText }]}>管理</Text>
+        <Text style={[styles.sectionLabel, { color: theme.secondaryText }]}>{t('settings.manage')}</Text>
         <Pressable
           onPress={() => setShowGroups(true)}
           style={({ pressed }) => [styles.menuRow, { backgroundColor: theme.cardBg, borderColor: theme.border, opacity: pressed ? 0.7 : 1 }]}
         >
           <Ionicons name="layers-outline" size={20} color={theme.primary} />
-          <Text style={[styles.menuLabel, { color: theme.text }]}>グループ管理</Text>
+          <Text style={[styles.menuLabel, { color: theme.text }]}>{t('group.manage')}</Text>
           <Ionicons name="chevron-forward" size={16} color={theme.secondaryText} />
         </Pressable>
 
+        {/* Remove Ads IAP */}
+        {!adsRemoved && (
+          <>
+            <Pressable
+              onPress={purchase}
+              disabled={iapLoading}
+              style={({ pressed }) => [styles.menuRow, { backgroundColor: theme.cardBg, borderColor: theme.border, opacity: pressed || iapLoading ? 0.7 : 1 }]}
+            >
+              <Ionicons name="star-outline" size={20} color="#FF9500" />
+              <Text style={[styles.menuLabel, { color: theme.text }]}>{t('settings.removeAds')}</Text>
+            </Pressable>
+            <Pressable
+              onPress={restore}
+              disabled={iapLoading}
+              style={({ pressed }) => [styles.menuRow, { backgroundColor: theme.cardBg, borderColor: theme.border, opacity: pressed || iapLoading ? 0.7 : 1 }]}
+            >
+              <Ionicons name="refresh-outline" size={20} color={theme.secondaryText} />
+              <Text style={[styles.menuLabel, { color: theme.secondaryText }]}>{t('settings.restorePurchases')}</Text>
+            </Pressable>
+          </>
+        )}
+
+        {/* Sample data */}
+        <Pressable
+          onPress={handleAddSample}
+          style={({ pressed }) => [styles.menuRow, { backgroundColor: theme.cardBg, borderColor: theme.border, opacity: pressed ? 0.7 : 1 }]}
+        >
+          <Ionicons name="flask-outline" size={20} color={theme.primary} />
+          <Text style={[styles.menuLabel, { color: theme.text }]}>{t('settings.addSample')}</Text>
+        </Pressable>
+
         {/* App info */}
-        <Text style={[styles.sectionLabel, { color: theme.secondaryText }]}>バージョン情報</Text>
+        <Text style={[styles.sectionLabel, { color: theme.secondaryText }]}>{t('settings.about')}</Text>
         <View style={[styles.infoRow, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
           <Text style={[styles.infoLabel, { color: theme.text }]}>TaskBoard</Text>
-          <Text style={[styles.infoValue, { color: theme.secondaryText }]}>バージョン 1.0.0</Text>
+          <Text style={[styles.infoValue, { color: theme.secondaryText }]}>{t('settings.version')}</Text>
         </View>
         <View style={[styles.infoRow, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
-          <Text style={[styles.infoLabel, { color: theme.text }]}>データ保存</Text>
-          <Text style={[styles.infoValue, { color: theme.secondaryText }]}>端末内のみ</Text>
+          <Text style={[styles.infoLabel, { color: theme.text }]}>{t('settings.dataSave')}</Text>
+          <Text style={[styles.infoValue, { color: theme.secondaryText }]}>{t('settings.dataSaveValue')}</Text>
         </View>
       </BottomSheet>
 

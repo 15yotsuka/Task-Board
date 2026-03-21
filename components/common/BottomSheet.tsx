@@ -20,7 +20,7 @@ import Animated, {
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '../../lib/useTheme';
-import { radius } from '../../lib/theme';
+import { radius, spacing } from '../../lib/theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CLOSE_THRESHOLD = 120;
@@ -118,7 +118,7 @@ export function BottomSheet({ visible, onClose, children }: Props) {
                 sheetStyle,
                 {
                   backgroundColor: theme.cardBg,
-                  paddingBottom: insets.bottom + 16,
+                  paddingBottom: insets.bottom + spacing.md,
                 },
               ]}
             >
@@ -159,15 +159,15 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.card,
     flex: 1,
     maxHeight: '90%',
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
   },
   grabBar: {
     width: 36,
     height: 5,
     borderRadius: 3,
     alignSelf: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md - 4,
   },
   scroll: {
     flex: 1,

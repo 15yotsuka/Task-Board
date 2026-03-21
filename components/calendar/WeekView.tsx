@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring } from 'react-native-reanimated';
 import {
   startOfWeek,
   addDays,
@@ -8,12 +9,66 @@ import {
   parseISO,
   isValid,
 } from 'date-fns';
-import { ja } from 'date-fns/locale';
 import { useShallow } from 'zustand/react/shallow';
+import { useTranslation } from '../../lib/useTranslation';
 import { useAppStore } from '../../store/useAppStore';
 import { useThemeColors } from '../../lib/useTheme';
 import { Todo } from '../../store/types';
 import { radius, spacing, withAlpha } from '../../lib/theme';
+
+interface TodoBlockProps {
+  todo: Todo;
+  accentColor: string;
+  onPress: (todo: Todo) => void;
+  theme: ReturnType<typeof import('../../lib/useTheme').useThemeColors>;
+}
+
+function WeekTodoBlock({ todo, accentColor, onPress, theme }: TodoBlockProps) {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withTiming(0.97, { duration: 120 });
+    opacity.value = withTiming(0.7, { duration: 120 });
+  };
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 26, stiffness: 200 });
+    opacity.value = withTiming(1, { duration: 150 });
+  };
+
+  return (
+    <Pressable
+      onPress={() => onPress(todo)}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
+      <Animated.View
+        style={[
+          styles.todoBlock,
+          {
+            backgroundColor: withAlpha(accentColor, 0.1),
+            borderLeftColor: accentColor,
+          },
+          animatedStyle,
+        ]}
+      >
+        <Text style={[styles.todoTitle, { color: theme.text }]} numberOfLines={1}>
+          {todo.title}
+        </Text>
+        {todo.dueDate && (
+          <Text style={[styles.todoTime, { color: theme.secondaryText }]}>
+            {format(parseISO(todo.dueDate), 'HH:mm')}
+          </Text>
+        )}
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 interface Props {
   currentWeek: Date;
@@ -22,6 +77,7 @@ interface Props {
 
 export function WeekView({ currentWeek, onTodoPress }: Props) {
   const theme = useThemeColors();
+  const { t, locale, language } = useTranslation();
   const todos = useAppStore(useShallow((s) => s.todos));
   const categories = useAppStore(useShallow((s) => s.categories));
   const groups = useAppStore(useShallow((s) => s.groups));
@@ -53,39 +109,24 @@ export function WeekView({ currentWeek, onTodoPress }: Props) {
                   { color: isToday ? theme.primary : theme.text },
                 ]}
               >
-                {format(day, 'M/d(E)', { locale: ja })}
+                {format(day, language === 'en' ? 'M/d (EEE)' : 'M/d(E)', { locale })}
               </Text>
             </View>
             {dayTodos.length === 0 ? (
-              <Text style={[styles.empty, { color: theme.secondaryText }]}>予定なし</Text>
+              <Text style={[styles.empty, { color: theme.secondaryText }]}>{t('cal.noSchedule')}</Text>
             ) : (
               dayTodos.map((todo) => {
                 const grp = groups.find((g) => g.id === todo.groupId);
                 const cat = categories.find((c) => c.id === todo.categoryId);
                 const accentColor = grp?.color ?? cat?.color ?? theme.primary;
                 return (
-                  <Pressable
+                  <WeekTodoBlock
                     key={todo.id}
-                    onPress={() => onTodoPress(todo)}
-                    style={({ pressed }) => [
-                      styles.todoBlock,
-                      {
-                        backgroundColor: withAlpha(accentColor, 0.1),
-                        borderLeftColor: accentColor,
-                        opacity: pressed ? 0.7 : 1,
-                        transform: [{ scale: pressed ? 0.97 : 1 }],
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.todoTitle, { color: theme.text }]} numberOfLines={1}>
-                      {todo.title}
-                    </Text>
-                    {todo.dueDate && (
-                      <Text style={[styles.todoTime, { color: theme.secondaryText }]}>
-                        {format(parseISO(todo.dueDate), 'HH:mm')}
-                      </Text>
-                    )}
-                  </Pressable>
+                    todo={todo}
+                    accentColor={accentColor}
+                    onPress={onTodoPress}
+                    theme={theme}
+                  />
                 );
               })
             )}

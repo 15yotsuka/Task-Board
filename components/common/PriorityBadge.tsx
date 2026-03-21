@@ -1,30 +1,27 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Priority } from '../../store/types';
-import { priorityColors, radius } from '../../lib/theme';
-
-const labels: Record<Priority, string> = {
-  high: '高',
-  medium: '中',
-  low: '低',
-};
+import { priorityColors, radius, spacing } from '../../lib/theme';
+import { useTranslation } from '../../lib/useTranslation';
 
 interface Props {
   priority: Priority;
 }
 
 export function PriorityBadge({ priority }: Props) {
+  const { t } = useTranslation();
   const color = priorityColors[priority];
+  const label = t(`priority.${priority}` as 'priority.high' | 'priority.medium' | 'priority.low');
   return (
     <View style={[styles.badge, { backgroundColor: color.bg }]}>
-      <Text style={[styles.text, { color: color.text }]}>{labels[priority]}</Text>
+      <Text style={[styles.text, { color: color.text }]}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   badge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: radius.pill,
   },

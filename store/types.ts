@@ -1,5 +1,6 @@
 export type Priority = 'high' | 'medium' | 'low';
 export type ThemeMode = 'system' | 'light' | 'dark';
+export type Language = 'ja' | 'en';
 
 export interface Group {
   id: string;
@@ -38,12 +39,19 @@ export interface AppState {
   groups: Group[];
   schemaVersion: number;
   themeMode: ThemeMode;
+  language: Language;
+
+  hasSeenTutorial: boolean;
+  adsRemoved: boolean;
 
   addTodo: (todo: Omit<Todo, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => void;
   updateTodo: (id: string, updates: Partial<Todo>) => void;
   deleteTodo: (id: string) => void;
+  deleteTodos: (ids: string[]) => void;
   toggleComplete: (id: string) => void;
   reorderTodos: (orderedIds: string[]) => void;
+  setHasSeenTutorial: (seen: boolean) => void;
+  setAdsRemoved: (removed: boolean) => void;
 
   addCategory: (category: Omit<Category, 'id' | 'userId' | 'createdAt'>) => void;
   updateCategory: (id: string, updates: Partial<Category>) => void;
@@ -54,4 +62,5 @@ export interface AppState {
   deleteGroup: (id: string) => void;
 
   setThemeMode: (mode: ThemeMode) => void;
+  setLanguage: (lang: Language) => void;
 }

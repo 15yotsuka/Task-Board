@@ -33,14 +33,14 @@ export function ScreenHeader({ title, subtitle, right }: Props) {
         </View>
         <View style={styles.rightRow}>
           {right}
-          <Pressable onPress={handleThemeToggle} style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.5 : 1 }]} hitSlop={10}>
+          <Pressable onPress={handleThemeToggle} style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.5 : 1 }]} hitSlop={spacing.sm}>
             <Ionicons
               name={isDark ? 'sunny-outline' : 'moon-outline'}
               size={22}
               color={theme.secondaryText}
             />
           </Pressable>
-          <Pressable onPress={() => setShowSettings(true)} style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.5 : 1 }]} hitSlop={10}>
+          <Pressable onPress={() => setShowSettings(true)} style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.5 : 1 }]} hitSlop={spacing.sm}>
             <Ionicons name="settings-outline" size={22} color={theme.secondaryText} />
           </Pressable>
         </View>
