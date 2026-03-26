@@ -17,6 +17,7 @@ export function ScreenHeader({ title, subtitle, right }: Props) {
   const isDark = useIsDark();
   const setThemeMode = useAppStore((s) => s.setThemeMode);
   const [showSettings, setShowSettings] = useState(false);
+  const [hasOpened, setHasOpened] = useState(false);
 
   const handleThemeToggle = () => {
     setThemeMode(isDark ? 'light' : 'dark');
@@ -40,12 +41,12 @@ export function ScreenHeader({ title, subtitle, right }: Props) {
               color={theme.secondaryText}
             />
           </Pressable>
-          <Pressable onPress={() => setShowSettings(true)} style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.5 : 1 }]} hitSlop={spacing.sm}>
+          <Pressable onPress={() => { setHasOpened(true); setShowSettings(true); }} style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.5 : 1 }]} hitSlop={spacing.sm}>
             <Ionicons name="settings-outline" size={22} color={theme.secondaryText} />
           </Pressable>
         </View>
       </View>
-      <SettingsSheet visible={showSettings} onClose={() => setShowSettings(false)} />
+      {hasOpened && <SettingsSheet visible={showSettings} onClose={() => setShowSettings(false)} />}
 
     </>
   );
