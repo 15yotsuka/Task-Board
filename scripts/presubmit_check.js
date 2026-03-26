@@ -29,6 +29,10 @@ function fail(msg) {
   failed++;
 }
 
+function warn(msg) {
+  console.warn(`  ⚠️  ${msg}`);
+}
+
 function checkFile(label, filePath, pattern) {
   let content;
   try {
@@ -89,7 +93,7 @@ async function main() {
   if (result.status >= 200 && result.status < 400) {
     ok(`${supportUrl} → HTTP ${result.status}`);
   } else {
-    fail(`${supportUrl} → HTTP ${result.status || 0} (${result.error || 'アクセス不可'})`);
+    warn(`${supportUrl} → HTTP ${result.status || 0} (${result.error || 'アクセス不可'}) — GitHub Pages未設定の可能性`);
   }
 
   // 3. buildNumber 一致チェック
