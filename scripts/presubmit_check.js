@@ -5,7 +5,7 @@
  * 実行: node scripts/presubmit_check.js
  *
  * チェック項目:
- *   1. AdMob シングルトン初期化 (ensureAdsInitialized) が AdBanner.tsx に存在する
+ *   1. AdMob ネイティブ初期化 (GADMobileAds.sharedInstance().start) が AppDelegate.swift に存在する
  *   2. サポートURLが200を返す
  *   3. buildNumber が app.json と Info.plist で一致する
  *   4. docs/index.html が存在する（サポートページ）
@@ -65,13 +65,13 @@ function fetchUrl(url) {
 async function main() {
   console.log('\n🔍 App Store 提出前チェック\n');
 
-  // 1. AdMob シングルトン初期化チェック
-  console.log('【1】AdMob シングルトン初期化（AdBanner.tsx）');
-  const adBannerPath = path.join(ROOT, 'components/common/AdBanner.tsx');
+  // 1. AdMob ネイティブ初期化チェック（AppDelegate.swift）
+  console.log('【1】AdMob ネイティブ初期化（AppDelegate.swift）');
+  const appDelegatePath = path.join(ROOT, 'ios/TaskBoard/AppDelegate.swift');
   checkFile(
-    'ensureAdsInitialized 関数が存在する',
-    adBannerPath,
-    /function ensureAdsInitialized/
+    'GADMobileAds.sharedInstance().start が存在する',
+    appDelegatePath,
+    /GADMobileAds\.sharedInstance\(\)\.start/
   );
 
   // 2. サポートURL死活チェック
