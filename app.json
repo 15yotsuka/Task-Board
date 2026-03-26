@@ -39,6 +39,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "extra": {
+      "supportUrl": "https://15yotsuka.github.io/Task-Board/"
+    },
     "plugins": [
       "expo-router",
       [
@@ -52,7 +55,6 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-6812432047298674~9854311118",
           "iosAppId": "ca-app-pub-6812432047298674~9854311118"
         }
       ]

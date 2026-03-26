@@ -5,10 +5,10 @@
  * 実行: node scripts/presubmit_check.js
  *
  * チェック項目:
- *   1. AdMob初期化 (mobileAds().initialize()) が _layout.tsx に存在する
+ *   1. AdMob シングルトン初期化 (ensureAdsInitialized) が AdBanner.tsx に存在する
  *   2. サポートURLが200を返す
  *   3. buildNumber が app.json と Info.plist で一致する
- *   4. Support URL が app.json に設定されている
+ *   4. docs/index.html が存在する（サポートページ）
  */
 
 const fs = require('fs');
@@ -30,11 +30,17 @@ function fail(msg) {
 }
 
 function checkFile(label, filePath, pattern) {
-  const content = fs.readFileSync(filePath, 'utf8');
+  let content;
+  try {
+    content = fs.readFileSync(filePath, 'utf8');
+  } catch (e) {
+    fail(`${label} — ファイルを読み込めません: ${filePath} (${e.message})`);
+    return;
+  }
   if (pattern.test(content)) {
     ok(label);
   } else {
-    fail(`${label} — "${pattern}" が見つかりません: ${filePath}`);
+    fail(`${label} — パターンが見つかりません: ${filePath}`);
   }
 }
 
@@ -55,26 +61,29 @@ function fetchUrl(url) {
 async function main() {
   console.log('\n🔍 App Store 提出前チェック\n');
 
-  // 1. AdMob初期化チェック
-  console.log('【1】AdMob 初期化');
-  const layoutPath = path.join(ROOT, 'app/_layout.tsx');
+  // 1. AdMob シングルトン初期化チェック
+  console.log('【1】AdMob シングルトン初期化（AdBanner.tsx）');
+  const adBannerPath = path.join(ROOT, 'components/common/AdBanner.tsx');
   checkFile(
-    'mobileAds import が存在する',
-    layoutPath,
-    /import mobileAds from 'react-native-google-mobile-ads'/
-  );
-  checkFile(
-    'mobileAds().initialize() が呼ばれている',
-    layoutPath,
-    /mobileAds\(\)\.initialize\(\)/
+    'ensureAdsInitialized 関数が存在する',
+    adBannerPath,
+    /function ensureAdsInitialized/
   );
 
   // 2. サポートURL死活チェック
   console.log('\n【2】サポートURL');
-  const appJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'));
-  const supportUrl =
-    appJson?.expo?.extra?.supportUrl ||
-    'https://15yotsuka.github.io/Task-Board/';
+  let appJson;
+  try {
+    appJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'));
+  } catch (e) {
+    fail('app.json が読み込めません');
+    process.exit(1);
+  }
+  const supportUrl = appJson?.expo?.extra?.supportUrl;
+  if (supportUrl === undefined) {
+    fail('app.json に extra.supportUrl が設定されていません');
+    return;
+  }
 
   const result = await fetchUrl(supportUrl);
   if (result.status >= 200 && result.status < 400) {
@@ -87,16 +96,25 @@ async function main() {
   console.log('\n【3】buildNumber 整合性');
   const buildNumberFromAppJson = appJson?.expo?.ios?.buildNumber;
   const infoPlistPath = path.join(ROOT, 'ios/TaskBoard/Info.plist');
-  const infoPlistContent = fs.readFileSync(infoPlistPath, 'utf8');
-  const match = infoPlistContent.match(/<key>CFBundleVersion<\/key>\s*<string>(\d+)<\/string>/);
-  const buildNumberFromPlist = match ? match[1] : null;
+  let infoPlistContent;
+  try {
+    infoPlistContent = fs.readFileSync(infoPlistPath, 'utf8');
+  } catch (e) {
+    fail('Info.plist が読み込めません');
+    infoPlistContent = null;
+  }
 
-  if (!buildNumberFromAppJson) {
-    fail('app.json に ios.buildNumber が設定されていない');
-  } else if (buildNumberFromPlist === buildNumberFromAppJson) {
-    ok(`app.json と Info.plist の buildNumber が一致: ${buildNumberFromAppJson}`);
-  } else {
-    fail(`buildNumber 不一致 — app.json: ${buildNumberFromAppJson}, Info.plist: ${buildNumberFromPlist}`);
+  if (infoPlistContent !== null) {
+    const match = infoPlistContent.match(/<key>CFBundleVersion<\/key>\s*<string>(\d+)<\/string>/);
+    const buildNumberFromPlist = match ? match[1] : null;
+
+    if (!buildNumberFromAppJson) {
+      fail('app.json に ios.buildNumber が設定されていない');
+    } else if (buildNumberFromPlist === buildNumberFromAppJson) {
+      ok(`app.json と Info.plist の buildNumber が一致: ${buildNumberFromAppJson}`);
+    } else {
+      fail(`buildNumber 不一致 — app.json: ${buildNumberFromAppJson}, Info.plist: ${buildNumberFromPlist}`);
+    }
   }
 
   // 4. docs/index.html 存在チェック（サポートページ）

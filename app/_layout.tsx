@@ -6,7 +6,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useIsDark } from '../lib/useTheme';
-import mobileAds from 'react-native-google-mobile-ads';
 
 function AppContent() {
   const isDark = useIsDark();
@@ -45,10 +44,6 @@ function AppContent() {
 }
 
 export default function RootLayout() {
-  useEffect(() => {
-    mobileAds().initialize();
-  }, []);
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
