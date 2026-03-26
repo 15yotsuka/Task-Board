@@ -2,29 +2,30 @@
 最終更新: 2026-03-26
 
 ## 現在地
-TestFlight 反映完了 — Build 11 が VALID・Internal Testersグループに配布済み
+TestFlight 反映完了 — Build 13 が VALID・Internal Testersグループに配布済み
 
 ## 直近の変更（最新3件）
-- 2026-03-26: AdBanner.tsx → MobileAds().initialize() Promise で SDK 初期化完了を待ってから BannerAd 表示（Build 11）
-- 2026-03-26: AppDelegate.swift → MobileAds.shared.start() に completion handler 追加（belt-and-suspenders）
-- 2026-03-26: ScreenHeader.tsx に hasOpened フラグ（SettingsSheet + useRnIAP を起動時マウント抑止）→ Build 10
+- 2026-03-26: AppDelegate.swift から MobileAds.shared.start() を完全削除（Build 13 クラッシュ根本修正）
+- 2026-03-26: AdBanner.tsx — Build 12の null return を廃止、JS側から2秒遅延後に MobileAds().initialize() を呼ぶ形に復元
+- 2026-03-26: Build 12 診断ビルド（AdBanner null return）→ クラッシュ継続 → AppDelegate start()が根本原因と確認
 
 ## 動作状況
-- ✅ Build 11 (buildNumber: 11): TestFlight VALID・Internal Testers配布済み（ID: cb06f044-ddf1-4c37-b0e6-825d73e106fa）
-- ✅ Build 10 (buildNumber: 10): TestFlight VALID（クラッシュ再発のため廃止）
+- ✅ Build 13 (buildNumber: 13): TestFlight VALID・Internal Testers配布済み（ID: f275ff2d-4909-40a0-8fb0-a399b15302ba）
+- ❌ Build 12 (buildNumber: 12): 診断ビルド・クラッシュ（AppDelegate start()が原因と判明）
+- ❌ Build 11 (buildNumber: 11): クラッシュ（AppDelegate + JS 二重初期化）
 - ⚠️ GitHub Pages: push済み・有効化待ち（Yu手動でSettings→Pages設定必要）
-- ❌ Build 4 (buildNumber: "3"): リジェクト（Guideline 2.1a クラッシュ・Guideline 1.5 URL切れ）
 
 ## バグ・注意事項
-- クラッシュ原因: MobileAds SDK の start() が非同期のため、JS 側が BannerAd を即レンダリングすると初期化前に TurboModule を呼び出して SIGABRT → MobileAds().initialize() Promise で解決
-- Google Mobile Ads SDK 13.1.0 では API 名が変更: GADMobileAds → MobileAds、sharedInstance() → shared プロパティ
-- NSUserTrackingUsageDescription をプラグイン設定に入れると App Privacy 宣言が必要になり Submission ブロッカー → 入れない（AdMob は非パーソナライズ広告で動作）
-- ASC API で UNRESOLVED_ISSUES 状態からの再提出は不可 → Web UI から「審査に提出」が必須
-- usesNonExemptEncryption を None のままにすると betaGroups への配布が「not assignable」エラー → PATCH で false に設定してから配布
+- クラッシュ根本原因（確定）: AppDelegate で MobileAds.shared.start { _ in } を呼ぶと、~0.5s 後に completion handler がバックグラウンドスレッドで発火。react-native-google-mobile-ads TurboModule が JS にイベントを通知しようとして ObjCTurboModule::performVoidMethodInvocation で ObjC 例外 → SIGABRT（Thread 9）
+- 修正: AppDelegate から MobileAds 初期化を完全削除。JS 側から 2s 遅延後に MobileAds().initialize() を呼ぶ
+- Google Mobile Ads SDK 13.1.0: API 名変更（GADMobileAds→MobileAds、sharedInstance()→shared）
+- NSUserTrackingUsageDescription を入れると App Privacy 宣言必要でブロッカーになる → 入れない
+- ASC API で UNRESOLVED_ISSUES 状態からの再提出不可 → Web UI から「審査に提出」が必須
+- usesNonExemptEncryption=null のまま配布すると「not assignable」エラー → PATCH で false に設定してから配布
 
 ## 次やること
-1. [Yu手動] TestFlight で Build 11 の動作確認（起動してクラッシュしないか、1〜2 秒後に広告が出るか）
-2. 問題なければ ASC Web UI から Build 11 を選んで「審査に提出」
+1. [Yu手動] TestFlight で Build 13 の動作確認（起動してクラッシュしないか、2 秒後に広告が出るか）
+2. 問題なければ ASC Web UI から Build 13 を選んで「審査に提出」
 3. [Yu手動] GitHub: Settings → Pages → Source: Deploy from branch / Branch: main / Folder: /docs → Save（サポートURL 404 の修正）
 
 ## 技術スタック

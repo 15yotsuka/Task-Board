@@ -14,7 +14,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yuotsuka.taskboard",
-      "buildNumber": "13",
+      "buildNumber": "14",
       "infoPlist": {
         "NSUserNotificationUsageDescription": "タスクの締切前にリマインダー通知をお送りします。",
         "UIBackgroundModes": [
@@ -54,13 +54,6 @@
           "icon": "./assets/icon.png",
           "color": "#007AFF",
           "sounds": []
-        }
-      ],
-      [
-        "react-native-google-mobile-ads",
-        {
-          "iosAppId": "ca-app-pub-6812432047298674~9854311118",
-          "delayAppMeasurementInit": true
         }
       ]
     ]
