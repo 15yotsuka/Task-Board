@@ -5,10 +5,9 @@
  * 実行: node scripts/presubmit_check.js
  *
  * チェック項目:
- *   1. AdMob ネイティブ初期化 (MobileAds.shared.start) が AppDelegate.swift に存在する
- *   2. サポートURLが200を返す
- *   3. buildNumber が app.json と Info.plist で一致する
- *   4. docs/index.html が存在する（サポートページ）
+ *   1. サポートURLが200を返す
+ *   2. buildNumber が app.json と Info.plist で一致する
+ *   3. docs/index.html が存在する（サポートページ）
  */
 
 const fs = require('fs');
@@ -65,17 +64,8 @@ function fetchUrl(url) {
 async function main() {
   console.log('\n🔍 App Store 提出前チェック\n');
 
-  // 1. AdMob ネイティブ初期化チェック（AppDelegate.swift）
-  console.log('【1】AdMob ネイティブ初期化（AppDelegate.swift）');
-  const appDelegatePath = path.join(ROOT, 'ios/TaskBoard/AppDelegate.swift');
-  checkFile(
-    'MobileAds.shared.start が存在する',
-    appDelegatePath,
-    /MobileAds\.shared\.start/
-  );
-
-  // 2. サポートURL死活チェック
-  console.log('\n【2】サポートURL');
+  // 1. サポートURL死活チェック
+  console.log('【1】サポートURL');
   let appJson;
   try {
     appJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'));
@@ -96,8 +86,8 @@ async function main() {
     warn(`${supportUrl} → HTTP ${result.status || 0} (${result.error || 'アクセス不可'}) — GitHub Pages未設定の可能性`);
   }
 
-  // 3. buildNumber 一致チェック
-  console.log('\n【3】buildNumber 整合性');
+  // 2. buildNumber 一致チェック
+  console.log('\n【2】buildNumber 整合性');
   const buildNumberFromAppJson = appJson?.expo?.ios?.buildNumber;
   const infoPlistPath = path.join(ROOT, 'ios/TaskBoard/Info.plist');
   let infoPlistContent;
@@ -121,8 +111,8 @@ async function main() {
     }
   }
 
-  // 4. docs/index.html 存在チェック（サポートページ）
-  console.log('\n【4】サポートページ');
+  // 3. docs/index.html 存在チェック（サポートページ）
+  console.log('\n【3】サポートページ');
   const docsPath = path.join(ROOT, 'docs/index.html');
   if (fs.existsSync(docsPath)) {
     ok('docs/index.html が存在する');

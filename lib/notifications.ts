@@ -1,15 +1,25 @@
 import * as Notifications from 'expo-notifications';
 import { parseISO, subMinutes, isValid } from 'date-fns';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// setNotificationHandler をモジュールレベルで呼ぶと、
+// ExpoNotificationsHandlerModule がバックグラウンドシリアルキューで
+// 通知イベントを dispatch → ObjCTurboModule::performVoidMethodInvocation で
+// ObjC 例外 → SIGABRT（Build 6〜13 の起動クラッシュ原因）。
+// useEffect から呼ぶことで RN ブリッジ安定後に登録する。
+let _handlerInitialized = false;
+export function initNotificationHandler() {
+  if (_handlerInitialized) return;
+  _handlerInitialized = true;
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export async function requestNotificationPermission(): Promise<boolean> {
   const { status: existing } = await Notifications.getPermissionsAsync();

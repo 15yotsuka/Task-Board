@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useIsDark } from '../lib/useTheme';
+import { initNotificationHandler } from '../lib/notifications';
 
 function AppContent() {
   const isDark = useIsDark();
@@ -44,6 +45,10 @@ function AppContent() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    initNotificationHandler();
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
