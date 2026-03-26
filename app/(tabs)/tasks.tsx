@@ -408,10 +408,13 @@ const styles = StyleSheet.create({
   chipScroll: {
     marginBottom: spacing.sm,
     flexGrow: 0,
+    flexShrink: 0,
   },
   chipContent: {
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   chip: {
     flexDirection: 'row',
@@ -421,6 +424,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs + 2,
     borderRadius: radius.pill,
     borderWidth: 1,
+    flexShrink: 0,
   },
   chipText: {
     ...typography.caption,

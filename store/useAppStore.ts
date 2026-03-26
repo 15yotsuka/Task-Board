@@ -21,6 +21,8 @@ export const useAppStore = create<AppState>()(
       language: 'ja' as Language,
       hasSeenTutorial: false,
       adsRemoved: false,
+      notificationsEnabled: false,
+      defaultNotificationMinutes: 60,
 
       // === Todo Actions ===
       addTodo: (todoData) => {
@@ -105,6 +107,14 @@ export const useAppStore = create<AppState>()(
         set({ language: lang });
       },
 
+      setNotificationsEnabled: (enabled) => {
+        set({ notificationsEnabled: enabled });
+      },
+
+      setDefaultNotificationMinutes: (n) => {
+        set({ defaultNotificationMinutes: n });
+      },
+
       setHasSeenTutorial: (seen) => {
         set({ hasSeenTutorial: seen });
       },
@@ -174,6 +184,8 @@ export const useAppStore = create<AppState>()(
         language: state.language,
         hasSeenTutorial: state.hasSeenTutorial,
         adsRemoved: state.adsRemoved,
+        notificationsEnabled: state.notificationsEnabled,
+        defaultNotificationMinutes: state.defaultNotificationMinutes,
       }),
     }
   )

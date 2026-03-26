@@ -19,6 +19,7 @@ import { BottomSheet } from '../common/BottomSheet';
 import { formatFullDate } from '../../lib/dateUtils';
 import { priorityColors, radius, spacing, typography, withAlpha } from '../../lib/theme';
 import { requestNotificationPermission, scheduleTaskNotification, cancelTaskNotification } from '../../lib/notifications';
+import { NOTIFICATION_PRESETS } from '../../lib/notificationPresets';
 
 interface Props {
   todo: Todo | null;
@@ -31,6 +32,8 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
   const theme = useThemeColors();
   const { t, locale, language } = useTranslation();
   const updateTodo = useAppStore((s) => s.updateTodo);
+  const notificationsEnabled = useAppStore((s) => s.notificationsEnabled);
+  const defaultNotificationMinutes = useAppStore((s) => s.defaultNotificationMinutes);
 
   const TABS = [t('task.tabBasic'), t('task.tabNotif'), t('task.tabDetail')];
   const PRIORITY_OPTIONS: { key: Priority; label: string }[] = [
@@ -53,7 +56,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pendingDate, setPendingDate] = useState<Date>(new Date());
   const [pendingTime, setPendingTime] = useState<Date>(new Date());
-  const [notifMinutes, setNotifMinutes] = useState('');
+  const [notifMinutes, setNotifMinutes] = useState<number | null>(null);
 
   useEffect(() => {
     if (todo) {
@@ -62,7 +65,7 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
       setPriority(todo.priority);
       setCategoryId(todo.categoryId);
       setGroupId(todo.groupId);
-      setNotifMinutes(todo.notificationMinutesBefore?.toString() ?? '');
+      setNotifMinutes(todo.notificationMinutesBefore ?? null);
       if (todo.dueDate) {
         const d = parseISO(todo.dueDate);
         setDueDate(isValid(d) ? d : null);
@@ -77,8 +80,8 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
 
   const handleSave = () => {
     if (!title.trim()) return;
-    const parsed = notifMinutes ? parseInt(notifMinutes, 10) : null;
-    const validMinutes = parsed && !isNaN(parsed) ? parsed : null;
+    const validMinutes = notifMinutes;
+    const scheduleMinutes = validMinutes ?? defaultNotificationMinutes;
 
     updateTodo(todo.id, {
       title: title.trim(),
@@ -95,10 +98,10 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
 
     void (async () => {
       await cancelTaskNotification(todo.id);
-      if (dueDate && validMinutes) {
+      if (dueDate) {
         const granted = await requestNotificationPermission();
         if (granted) {
-          await scheduleTaskNotification(todo.id, title.trim(), dueDate.toISOString(), validMinutes);
+          await scheduleTaskNotification(todo.id, title.trim(), dueDate.toISOString(), scheduleMinutes);
         }
       }
     })();
@@ -352,21 +355,61 @@ export function TaskDetailModal({ todo, visible, onClose }: Props) {
 
         {activeTab === 1 && (
           <>
-            <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>{t('task.notifTiming')}</Text>
-            <View style={styles.notifRow}>
-              <TextInput
-                style={[styles.notifInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.pageBg }]}
-                value={notifMinutes}
-                onChangeText={setNotifMinutes}
-                keyboardType="number-pad"
-                placeholder="30"
-                placeholderTextColor={theme.secondaryText}
-              />
-              <Text style={[styles.notifUnit, { color: theme.text }]}>{t('task.notifUnit')}</Text>
-            </View>
-            <Text style={[styles.notifHint, { color: theme.secondaryText }]}>
-              {t('task.notifHint')}
-            </Text>
+            {!notificationsEnabled ? (
+              <Text style={[styles.notifHint, { color: theme.secondaryText, marginTop: spacing.md }]}>
+                {'設定 → 通知 からリマインダーをONにしてください'}
+              </Text>
+            ) : (
+              <>
+                <Text style={[styles.fieldLabel, { color: theme.secondaryText }]}>{t('task.notifTiming')}</Text>
+                <View style={styles.notifPresetRow}>
+                  <Pressable
+                    onPress={() => setNotifMinutes(null)}
+                    style={({ pressed }) => [
+                      styles.notifPresetChip,
+                      {
+                        backgroundColor: notifMinutes === null ? theme.primaryBg : theme.pageBg,
+                        borderColor: notifMinutes === null ? theme.primary : theme.border,
+                        opacity: pressed ? 0.7 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.notifPresetChipText, { color: notifMinutes === null ? theme.primary : theme.text }]}>
+                      {'デフォルト'}
+                    </Text>
+                  </Pressable>
+                  {NOTIFICATION_PRESETS.map((p) => {
+                    const active = notifMinutes === p.minutes;
+                    return (
+                      <Pressable
+                        key={p.minutes}
+                        onPress={() => setNotifMinutes(p.minutes)}
+                        style={({ pressed }) => [
+                          styles.notifPresetChip,
+                          {
+                            backgroundColor: active ? theme.primary : theme.pageBg,
+                            borderColor: active ? theme.primary : theme.border,
+                            opacity: pressed ? 0.7 : 1,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.notifPresetChipText, { color: active ? '#FFF' : theme.text }]}>
+                          {p.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                {notifMinutes === null && (
+                  <Text style={[styles.notifHint, { color: theme.secondaryText }]}>
+                    {'デフォルト（' + defaultNotificationMinutes + '分前）を使用'}
+                  </Text>
+                )}
+                <Text style={[styles.notifHint, { color: theme.secondaryText }]}>
+                  {t('task.notifHint')}
+                </Text>
+              </>
+            )}
           </>
         )}
 
@@ -512,21 +555,20 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
   },
-  notifRow: {
+  notifPresetRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  notifInput: {
+  notifPresetChip: {
+    paddingHorizontal: spacing.md - 2,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderRadius: radius.input,
-    padding: spacing.md - 2,
-    fontSize: 16,
-    width: 80,
-    textAlign: 'center',
   },
-  notifUnit: {
-    ...typography.body,
+  notifPresetChipText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   notifHint: {
     ...typography.caption,

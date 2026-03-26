@@ -28,6 +28,7 @@ export function AddTaskForm({ visible, onClose }: Props) {
   const theme = useThemeColors();
   const { t, locale, language } = useTranslation();
   const addTodo = useAppStore((s) => s.addTodo);
+  const defaultNotificationMinutes = useAppStore((s) => s.defaultNotificationMinutes);
 
   const PRIORITY_OPTIONS: { key: Priority; label: string }[] = [
     { key: 'high', label: t('priority.high') },
@@ -78,7 +79,7 @@ export function AddTaskForm({ visible, onClose }: Props) {
       groupId,
       isCompleted: false,
       orderIndex: 0,
-      notificationMinutesBefore: null,
+      notificationMinutesBefore: defaultNotificationMinutes,
     });
     reset();
     onClose();

@@ -43,6 +43,8 @@ export interface AppState {
 
   hasSeenTutorial: boolean;
   adsRemoved: boolean;
+  notificationsEnabled: boolean;
+  defaultNotificationMinutes: number;
 
   addTodo: (todo: Omit<Todo, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => void;
   updateTodo: (id: string, updates: Partial<Todo>) => void;
@@ -63,4 +65,6 @@ export interface AppState {
 
   setThemeMode: (mode: ThemeMode) => void;
   setLanguage: (lang: Language) => void;
+  setNotificationsEnabled: (enabled: boolean) => void;
+  setDefaultNotificationMinutes: (n: number) => void;
 }

@@ -14,16 +14,20 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yuotsuka.taskboard",
-      "buildNumber": "5",
+      "buildNumber": "7",
       "infoPlist": {
         "NSUserNotificationUsageDescription": "タスクの締切前にリマインダー通知をお送りします。",
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       },
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": [
           {
             "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
           }
         ]
       }
@@ -55,7 +59,8 @@
       [
         "react-native-google-mobile-ads",
         {
-          "iosAppId": "ca-app-pub-6812432047298674~9854311118"
+          "iosAppId": "ca-app-pub-6812432047298674~9854311118",
+          "delayAppMeasurementInit": true
         }
       ]
     ]

@@ -5,15 +5,19 @@ import {
   Pressable,
   StyleSheet,
   Alert,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppStore } from '../../store/useAppStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useThemeColors } from '../../lib/useTheme';
 import { useTranslation } from '../../lib/useTranslation';
 import { BottomSheet } from './BottomSheet';
 import { GroupManageSheet } from '../groups/GroupManageSheet';
 import { ThemeMode, Language } from '../../store/types';
 import { radius, spacing, shadow } from '../../lib/theme';
+import { NOTIFICATION_PRESETS } from '../../lib/notificationPresets';
+import { requestNotificationPermission } from '../../lib/notifications';
 import { useIAP } from '../../lib/useIAP';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
@@ -32,7 +36,21 @@ export function SettingsSheet({ visible, onClose }: Props) {
   const setLanguage = useAppStore((s) => s.setLanguage);
   const addGroup = useAppStore((s) => s.addGroup);
   const addTodo = useAppStore((s) => s.addTodo);
+  const groups = useAppStore(useShallow((s) => s.groups));
+  const todos = useAppStore(useShallow((s) => s.todos));
+  const notificationsEnabled = useAppStore((s) => s.notificationsEnabled);
+  const setNotificationsEnabled = useAppStore((s) => s.setNotificationsEnabled);
+  const defaultNotificationMinutes = useAppStore((s) => s.defaultNotificationMinutes);
+  const setDefaultNotificationMinutes = useAppStore((s) => s.setDefaultNotificationMinutes);
   const [showGroups, setShowGroups] = useState(false);
+
+  const handleNotifToggle = async (enabled: boolean) => {
+    if (enabled) {
+      const granted = await requestNotificationPermission();
+      if (!granted) return;
+    }
+    setNotificationsEnabled(enabled);
+  };
   const { adsRemoved, loading: iapLoading, purchase, restore } = useIAP();
 
   const handleAddSample = () => {
@@ -46,13 +64,14 @@ export function SettingsSheet({ visible, onClose }: Props) {
 
     const isEn = language === 'en';
 
-    // グループ追加
+    // グループ追加（同名が既存の場合はスキップ）
     const groupWork    = { name: isEn ? 'Work'     : '仕事',        color: '#007AFF' };
     const groupPrivate = { name: isEn ? 'Personal' : 'プライベート', color: '#34C759' };
     const groupStudy   = { name: isEn ? 'Study'    : '勉強',        color: '#FF9500' };
-    addGroup(groupWork);
-    addGroup(groupPrivate);
-    addGroup(groupStudy);
+    const existingGroupNames = new Set(groups.map((g) => g.name));
+    if (!existingGroupNames.has(groupWork.name)) addGroup(groupWork);
+    if (!existingGroupNames.has(groupPrivate.name)) addGroup(groupPrivate);
+    if (!existingGroupNames.has(groupStudy.name)) addGroup(groupStudy);
 
     // タスク追加（グループIDは追加後に取れないので null で追加）
     const sampleTodos = isEn ? [
@@ -73,7 +92,9 @@ export function SettingsSheet({ visible, onClose }: Props) {
       { title: 'React Native のドキュメントを読む', priority: 'high' as const,   dueDate: day(5) },
     ];
 
+    const existingTitles = new Set(todos.map((t) => t.title));
     sampleTodos.forEach((s, i) => {
+      if (existingTitles.has(s.title)) return;
       addTodo({
         title: s.title,
         memo: '',
@@ -164,6 +185,46 @@ export function SettingsSheet({ visible, onClose }: Props) {
             );
           })}
         </View>
+
+        {/* Notification */}
+        <Text style={[styles.sectionLabel, { color: theme.secondaryText }]}>通知</Text>
+        <View style={[styles.notifToggleRow, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+          <Text style={[styles.notifLabel, { color: theme.text }]}>リマインダー通知</Text>
+          <Switch
+            value={notificationsEnabled}
+            onValueChange={handleNotifToggle}
+            trackColor={{ false: theme.border, true: theme.primary }}
+            thumbColor="#FFF"
+          />
+        </View>
+        {notificationsEnabled && (
+          <View style={[styles.notifPresetCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
+            <Text style={[styles.notifPresetLabel, { color: theme.secondaryText }]}>通知タイミング</Text>
+            <View style={styles.notifPresetRow}>
+              {NOTIFICATION_PRESETS.map((p) => {
+                const active = defaultNotificationMinutes === p.minutes;
+                return (
+                  <Pressable
+                    key={p.minutes}
+                    onPress={() => setDefaultNotificationMinutes(p.minutes)}
+                    style={({ pressed }) => [
+                      styles.notifPresetChip,
+                      {
+                        backgroundColor: active ? theme.primary : theme.pageBg,
+                        borderColor: active ? theme.primary : theme.border,
+                        opacity: pressed ? 0.7 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.notifPresetChipText, { color: active ? '#FFF' : theme.text }]}>
+                      {p.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {/* Groups */}
         <Text style={[styles.sectionLabel, { color: theme.secondaryText }]}>{t('settings.manage')}</Text>
@@ -284,5 +345,46 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     fontSize: 14,
+  },
+  notifToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: radius.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: spacing.xs,
+  },
+  notifLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  notifPresetCard: {
+    borderRadius: radius.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  notifPresetLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.sm,
+  },
+  notifPresetRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  notifPresetChip: {
+    paddingHorizontal: spacing.md - 2,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+  },
+  notifPresetChipText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

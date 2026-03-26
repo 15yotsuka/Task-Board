@@ -2,15 +2,15 @@
 最終更新: 2026-03-26
 
 ## 現在地
-再提出準備完了 — Build 5 用コード修正済み・Xcodeアーカイブ待ち
+TestFlight 反映完了 — Build 6 が VALID になった・審査提出待ち
 
 ## 直近の変更（最新3件）
+- 2026-03-26: app.json + Info.plist → buildNumber 5 → 6 にインクリメント
 - 2026-03-26: app/_layout.tsx → mobileAds().initialize() を RootLayout に追加（起動クラッシュ修正）
 - 2026-03-26: docs/index.html → GitHub Pages サポートページ追加・push済み
-- 2026-03-26: scripts/presubmit_check.js → 提出前自動チェックスクリプト追加
 
 ## 動作状況
-- ⚠️ Build 5: コード修正済み・Xcodeアーカイブ未実施（Yu手動でアーカイブ必要）
+- ✅ Build 6 (buildNumber: 6): TestFlight VALID（ID: 43a53694-3811-462d-a960-f07e4f87aa92）
 - ⚠️ GitHub Pages: push済み・有効化待ち（Yu手動でSettings→Pages設定必要）
 - ❌ Build 4 (buildNumber: "3"): リジェクト（Guideline 2.1a クラッシュ・Guideline 1.5 URL切れ）
 - ✅ presubmit チェック: npm run presubmit で提出前検証可能
@@ -22,11 +22,9 @@
 - 提出前は必ず npm run presubmit を実行してチェックをパスさせること
 
 ## 次やること
-1. [Yu手動] GitHub: Settings → Pages → Source: Deploy from branch / Branch: main / Folder: /docs → Save
-2. [Yu手動] npm run presubmit で全チェック通過を確認
-3. [Yu手動] Xcode → Product → Archive → Distribute App → App Store Connect でアップロード
-4. [Yu手動] ASC Web UI から「審査に提出」（Build 5）
-5. 承認後: AdMob お支払いプロファイルを完成させる
+1. [Yu手動] ASC Web UI から Build 6 を選んで「審査に提出」
+2. [Yu手動] GitHub: Settings → Pages → Source: Deploy from branch / Branch: main / Folder: /docs → Save
+3. 承認後: AdMob お支払いプロファイルを完成させる
 
 ## 技術スタック
 - React Native (Expo SDK 55), TypeScript, React 19
