@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Platform } from 'react-native';
-import mobileAds, { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import { useAppStore } from '../../store/useAppStore';
 
 const AD_UNIT_ID = __DEV__
@@ -12,32 +12,14 @@ const AD_UNIT_ID = __DEV__
 //   adsRemoved=true の場合は useEffect の早期 return とレンダリング側の if で広告を隠す。
 // - 初期化失敗時は ready = false のまま BannerAd をレンダリングしない（SIGABRT 防止）。
 // Singleton: initialize() is called only once across all AdBanner instances
-let _initPromise: Promise<unknown> | null = null;
-function ensureAdsInitialized(): Promise<unknown> {
-  if (!_initPromise) {
-    // 100ms遅延: React Nativeブリッジが完全に準備できてからAdMob SDKを初期化する
-    // （TurboModule経由でObjC例外が伝播してabortするのを防ぐ）
-    _initPromise = new Promise((resolve) => setTimeout(resolve, 100))
-      .then(() => mobileAds().initialize())
-      .catch((e) => {
-        // 初期化失敗時は _initPromise をリセットして再試行を可能にし、
-        // かつ Promise を reject のままにして setReady(true) を呼ばせない
-        _initPromise = null;
-        throw e;
-      });
-  }
-  return _initPromise;
-}
-
+// AdMob はネイティブ（AppDelegate.swift）で初期化済み。JS 側からの initialize() 呼び出し不要。
 export function AdBanner() {
   const adsRemoved = useAppStore((s) => s.adsRemoved);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === 'web' || adsRemoved) return;
-    ensureAdsInitialized()
-      .then(() => setReady(true))
-      .catch(() => {}); // ObjC例外がTurboModule経由で伝播してもプロセスをabortさせない
+    setReady(true);
   }, [adsRemoved]);
 
   if (Platform.OS === 'web' || adsRemoved || !ready) return null;

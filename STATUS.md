@@ -2,14 +2,15 @@
 最終更新: 2026-03-26
 
 ## 現在地
-TestFlight 反映完了 — Build 6 が VALID になった・審査提出待ち
+TestFlight 反映完了 — Build 7 が VALID・Internal Testersグループに配布済み
 
 ## 直近の変更（最新3件）
+- 2026-03-26: app.json + Info.plist → buildNumber 6 → 7 にインクリメント
+- 2026-03-26: AdMobクラッシュ修正（100ms遅延・.catch追加・GADDelayAppMeasurementInit=true）→ Build 7 としてTestFlightへアップロード
 - 2026-03-26: app.json + Info.plist → buildNumber 5 → 6 にインクリメント
-- 2026-03-26: app/_layout.tsx → mobileAds().initialize() を RootLayout に追加（起動クラッシュ修正）
-- 2026-03-26: docs/index.html → GitHub Pages サポートページ追加・push済み
 
 ## 動作状況
+- ✅ Build 7 (buildNumber: 7): TestFlight VALID・Internal Testers配布済み（ID: 351a74f6-6a75-4dd0-86e3-5a0a14a7298f）
 - ✅ Build 6 (buildNumber: 6): TestFlight VALID（ID: 43a53694-3811-462d-a960-f07e4f87aa92）
 - ⚠️ GitHub Pages: push済み・有効化待ち（Yu手動でSettings→Pages設定必要）
 - ❌ Build 4 (buildNumber: "3"): リジェクト（Guideline 2.1a クラッシュ・Guideline 1.5 URL切れ）
@@ -20,11 +21,13 @@ TestFlight 反映完了 — Build 6 が VALID になった・審査提出待ち
 - ASC API で UNRESOLVED_ISSUES 状態からの再提出は不可 → Web UI から「審査に提出」が必須
 - mobileAds().initialize() は必ず RootLayout の useEffect に入れること（未コミットのまま提出しないこと）
 - 提出前は必ず npm run presubmit を実行してチェックをパスさせること
+- usesNonExemptEncryption を None のままにすると betaGroups への配布が「not assignable」エラーになる → PATCH で false に設定してから配布
 
 ## 次やること
-1. [Yu手動] ASC Web UI から Build 6 を選んで「審査に提出」
-2. [Yu手動] GitHub: Settings → Pages → Source: Deploy from branch / Branch: main / Folder: /docs → Save
-3. 承認後: AdMob お支払いプロファイルを完成させる
+1. [Yu手動] TestFlight で Build 7 の動作確認（AdMobクラッシュが解消されているか）
+2. 問題なければ ASC Web UI から Build 7 を選んで「審査に提出」
+3. [Yu手動] GitHub: Settings → Pages → Source: Deploy from branch / Branch: main / Folder: /docs → Save
+4. 承認後: AdMob お支払いプロファイルを完成させる
 
 ## 技術スタック
 - React Native (Expo SDK 55), TypeScript, React 19
