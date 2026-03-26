@@ -1,16 +1,19 @@
-import * as Notifications from 'expo-notifications';
 import { parseISO, subMinutes, isValid } from 'date-fns';
 
-// setNotificationHandler をモジュールレベルで呼ぶと、
-// ExpoNotificationsHandlerModule がバックグラウンドシリアルキューで
-// 通知イベントを dispatch → ObjCTurboModule::performVoidMethodInvocation で
-// ObjC 例外 → SIGABRT（Build 6〜13 の起動クラッシュ原因）。
-// useEffect から呼ぶことで RN ブリッジ安定後に登録する。
+// expo-notifications をトップレベルで import しない。
+// import 時に TurboModule がインスタンス化され、EXExportedModule の
+// バックグラウンドシリアルキューで初期化処理が走り
+// ObjCTurboModule::performVoidMethodInvocation で ObjC 例外 → SIGABRT。
+// require() で遅延ロードすることで、RN ブリッジ安定後にのみアクセスする。
+function getNotifications() {
+  return require('expo-notifications') as typeof import('expo-notifications');
+}
+
 let _handlerInitialized = false;
 export function initNotificationHandler() {
   if (_handlerInitialized) return;
   _handlerInitialized = true;
-  Notifications.setNotificationHandler({
+  getNotifications().setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
       shouldPlaySound: true,
@@ -22,6 +25,7 @@ export function initNotificationHandler() {
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {
+  const Notifications = getNotifications();
   const { status: existing } = await Notifications.getPermissionsAsync();
   if (existing === 'granted') return true;
   const { status } = await Notifications.requestPermissionsAsync();
@@ -34,13 +38,13 @@ export async function scheduleTaskNotification(
   dueDate: string,
   minutesBefore: number
 ): Promise<boolean> {
+  const Notifications = getNotifications();
   const due = parseISO(dueDate);
   if (!isValid(due)) return false;
 
   const triggerDate = subMinutes(due, minutesBefore);
   if (triggerDate <= new Date()) return false;
 
-  // todoId を identifier にすることで cancelTaskNotification が identifier 保存なしで動作する
   await Notifications.scheduleNotificationAsync({
     identifier: `todo-${todoId}`,
     content: {
@@ -56,6 +60,7 @@ export async function scheduleTaskNotification(
 
 export async function cancelTaskNotification(todoId: string) {
   try {
+    const Notifications = getNotifications();
     await Notifications.cancelScheduledNotificationAsync(`todo-${todoId}`);
   } catch {
     // 通知が存在しない場合はエラーを無視
