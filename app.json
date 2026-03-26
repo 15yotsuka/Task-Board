@@ -14,7 +14,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yuotsuka.taskboard",
-      "buildNumber": "10",
+      "buildNumber": "11",
       "infoPlist": {
         "NSUserNotificationUsageDescription": "タスクの締切前にリマインダー通知をお送りします。",
         "UIBackgroundModes": [

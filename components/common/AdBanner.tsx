@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Platform } from 'react-native';
-import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+import { BannerAd, BannerAdSize, TestIds, MobileAds } from 'react-native-google-mobile-ads';
 import { useAppStore } from '../../store/useAppStore';
 
 const AD_UNIT_ID = __DEV__
@@ -19,7 +19,13 @@ export function AdBanner() {
 
   useEffect(() => {
     if (Platform.OS === 'web' || adsRemoved) return;
-    setReady(true);
+    MobileAds()
+      .initialize()
+      .then(() => setReady(true))
+      .catch(() => {
+        const timer = setTimeout(() => setReady(true), 2000);
+        return () => clearTimeout(timer);
+      });
   }, [adsRemoved]);
 
   if (Platform.OS === 'web' || adsRemoved || !ready) return null;
