@@ -5,7 +5,7 @@
  * 実行: node scripts/presubmit_check.js
  *
  * チェック項目:
- *   1. AdMob ネイティブ初期化 (GADMobileAds.sharedInstance().start) が AppDelegate.swift に存在する
+ *   1. AdMob ネイティブ初期化 (GADMobileAds.shared.start) が AppDelegate.swift に存在する
  *   2. サポートURLが200を返す
  *   3. buildNumber が app.json と Info.plist で一致する
  *   4. docs/index.html が存在する（サポートページ）
@@ -69,9 +69,9 @@ async function main() {
   console.log('【1】AdMob ネイティブ初期化（AppDelegate.swift）');
   const appDelegatePath = path.join(ROOT, 'ios/TaskBoard/AppDelegate.swift');
   checkFile(
-    'GADMobileAds.sharedInstance().start が存在する',
+    'GADMobileAds.shared.start が存在する',
     appDelegatePath,
-    /GADMobileAds\.sharedInstance\(\)\.start/
+    /GADMobileAds\.shared\.start/
   );
 
   // 2. サポートURL死活チェック
