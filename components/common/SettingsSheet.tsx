@@ -51,7 +51,7 @@ export function SettingsSheet({ visible, onClose }: Props) {
     }
     setNotificationsEnabled(enabled);
   };
-  const { adsRemoved, loading: iapLoading, purchase, restore } = useIAP();
+  const { adsRemoved, loading: iapLoading, purchase, restore } = useIAP(visible);
 
   const handleAddSample = () => {
     const now = new Date();

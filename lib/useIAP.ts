@@ -6,7 +6,8 @@ import { useTranslation } from './useTranslation';
 
 const PRODUCT_ID = 'com.yuotsuka.taskboard.remove_ads';
 
-export function useIAP() {
+// active=true のときだけ initConnection() を呼ぶ（起動直後のクラッシュ防止）
+export function useIAP(active = false) {
   const adsRemoved = useAppStore((s) => s.adsRemoved);
   const setAdsRemoved = useAppStore((s) => s.setAdsRemoved);
   const { t } = useTranslation();
@@ -32,12 +33,12 @@ export function useIAP() {
   });
 
   useEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!active || Platform.OS !== 'ios') return;
     initConnection().then(() => {
       fetchProducts({ skus: [PRODUCT_ID] });
     }).catch(() => {});
-    return () => { endConnection(); };
-  }, []);
+    return () => { endConnection().catch(() => {}); };
+  }, [active]);
 
   const purchase = useCallback(async () => {
     if (!connected || adsRemoved) return;
