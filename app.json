@@ -2,6 +2,7 @@
   "expo": {
     "name": "TaskBoard",
     "slug": "taskboard",
+    "scheme": "taskboard",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yuotsuka.taskboard",
-      "buildNumber": "15",
+      "buildNumber": "16",
       "infoPlist": {
         "NSUserNotificationUsageDescription": "タスクの締切前にリマインダー通知をお送りします。",
         "UIBackgroundModes": [
