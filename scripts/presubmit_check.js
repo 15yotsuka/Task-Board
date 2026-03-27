@@ -5,9 +5,10 @@
  * 実行: node scripts/presubmit_check.js
  *
  * チェック項目:
- *   1. サポートURLが200を返す
- *   2. buildNumber が app.json と Info.plist で一致する
- *   3. docs/index.html が存在する（サポートページ）
+ *   1. expo-router 必須設定（scheme, plugin）
+ *   2. サポートURLが200を返す
+ *   3. buildNumber が app.json と Info.plist で一致する
+ *   4. docs/index.html が存在する（サポートページ）
  */
 
 const fs = require('fs');
@@ -64,14 +65,28 @@ function fetchUrl(url) {
 async function main() {
   console.log('\n🔍 App Store 提出前チェック\n');
 
-  // 1. サポートURL死活チェック
-  console.log('【1】サポートURL');
   let appJson;
   try {
     appJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'));
   } catch (e) {
     fail('app.json が読み込めません');
     process.exit(1);
+  }
+
+  // 1. expo-router 必須設定チェック
+  console.log('【1】expo-router 設定');
+  const scheme = appJson?.expo?.scheme;
+  if (scheme) {
+    ok(`scheme が定義されている: "${scheme}"`);
+  } else {
+    fail('app.json に "scheme" が未定義 — expo-router が本番ビルドで "Cannot make a deep link into a standalone app with no custom scheme defined" でクラッシュします');
+  }
+  const plugins = appJson?.expo?.plugins || [];
+  const hasExpoRouter = plugins.some(p => p === 'expo-router' || (Array.isArray(p) && p[0] === 'expo-router'));
+  if (hasExpoRouter) {
+    ok('expo-router プラグインが設定されている');
+  } else {
+    fail('app.json の plugins に "expo-router" がありません');
   }
   const supportUrl = appJson?.expo?.extra?.supportUrl;
   if (supportUrl === undefined) {
@@ -86,8 +101,8 @@ async function main() {
     warn(`${supportUrl} → HTTP ${result.status || 0} (${result.error || 'アクセス不可'}) — GitHub Pages未設定の可能性`);
   }
 
-  // 2. buildNumber 一致チェック
-  console.log('\n【2】buildNumber 整合性');
+  // 3. buildNumber 一致チェック
+  console.log('\n【3】buildNumber 整合性');
   const buildNumberFromAppJson = appJson?.expo?.ios?.buildNumber;
   const infoPlistPath = path.join(ROOT, 'ios/TaskBoard/Info.plist');
   let infoPlistContent;
@@ -111,8 +126,8 @@ async function main() {
     }
   }
 
-  // 3. docs/index.html 存在チェック（サポートページ）
-  console.log('\n【3】サポートページ');
+  // 4. docs/index.html 存在チェック（サポートページ）
+  console.log('\n【4】サポートページ');
   const docsPath = path.join(ROOT, 'docs/index.html');
   if (fs.existsSync(docsPath)) {
     ok('docs/index.html が存在する');
