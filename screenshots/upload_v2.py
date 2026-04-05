@@ -10,7 +10,7 @@ from asc_api import ASCClient
 from pathlib import Path
 
 APP_ID     = '6760923848'
-VER_LOC_ID = 'f988b86a-954f-4f4e-847a-e87f36d32d47'
+VER_LOC_ID = 'e20b9f95-5453-49bf-997b-5f56c36bdec1'  # v1.1.0 ja
 V2_DIR     = Path('/Users/yuotsuka/taskboard/screenshots/v2')
 
 TARGETS = [

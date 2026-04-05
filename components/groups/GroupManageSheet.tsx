@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,19 +6,27 @@ import {
   Pressable,
   StyleSheet,
   Alert,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useShallow } from 'zustand/react/shallow';
-import { useAppStore } from '../../store/useAppStore';
-import { useThemeColors } from '../../lib/useTheme';
-import { useTranslation } from '../../lib/useTranslation';
-import { BottomSheet } from '../common/BottomSheet';
-import { Group } from '../../store/types';
-import { radius, spacing, withAlpha } from '../../lib/theme';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useShallow } from "zustand/react/shallow";
+import { useAppStore } from "../../store/useAppStore";
+import { useThemeColors } from "../../lib/useTheme";
+import { useTranslation } from "../../lib/useTranslation";
+import { BottomSheet } from "../common/BottomSheet";
+import { Group } from "../../store/types";
+import { radius, spacing, withAlpha } from "../../lib/theme";
 
 const PRESET_COLORS = [
-  '#007AFF', '#34C759', '#FF9500', '#FF3B30', '#AF52DE',
-  '#FF2D55', '#5AC8FA', '#FFCC00', '#FF6B35', '#00C7BE',
+  "#007AFF",
+  "#34C759",
+  "#FF9500",
+  "#FF3B30",
+  "#AF52DE",
+  "#FF2D55",
+  "#5AC8FA",
+  "#FFCC00",
+  "#FF6B35",
+  "#00C7BE",
 ];
 
 interface Props {
@@ -35,16 +43,16 @@ export function GroupManageSheet({ visible, onClose }: Props) {
   const deleteGroup = useAppStore((s) => s.deleteGroup);
 
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
-  const [newName, setNewName] = useState('');
+  const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState(PRESET_COLORS[0]);
   const [isAdding, setIsAdding] = useState(false);
 
-  // オープン時に入力途中のフォーム状態をリセット（クローズアニメーション中のブランクフラッシュを防ぐ）
+  // クローズ時にフォーム状態をリセット（次回オープン時にクリーンな状態で表示）
   useEffect(() => {
-    if (visible) {
+    if (!visible) {
       setIsAdding(false);
       setEditingGroup(null);
-      setNewName('');
+      setNewName("");
       setNewColor(PRESET_COLORS[0]);
     }
   }, [visible]);
@@ -52,39 +60,50 @@ export function GroupManageSheet({ visible, onClose }: Props) {
   const handleAdd = () => {
     if (!newName.trim()) return;
     addGroup({ name: newName.trim(), color: newColor });
-    setNewName('');
+    setNewName("");
     setNewColor(PRESET_COLORS[0]);
     setIsAdding(false);
   };
 
   const handleSaveEdit = () => {
     if (!editingGroup || !editingGroup.name.trim()) return;
-    updateGroup(editingGroup.id, { name: editingGroup.name, color: editingGroup.color });
+    updateGroup(editingGroup.id, {
+      name: editingGroup.name,
+      color: editingGroup.color,
+    });
     setEditingGroup(null);
   };
 
   const handleDelete = (group: Group) => {
     Alert.alert(
-      t('group.deleteAlert.title'),
-      t('group.deleteAlert.message', { name: group.name }),
+      t("group.deleteAlert.title"),
+      t("group.deleteAlert.message", { name: group.name }),
       [
-        { text: t('common.cancel'), style: 'cancel' },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: t('common.delete'),
-          style: 'destructive',
+          text: t("common.delete"),
+          style: "destructive",
           onPress: () => deleteGroup(group.id),
         },
-      ]
+      ],
     );
   };
 
   return (
     <BottomSheet visible={visible} onClose={onClose}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.text }]}>{t('group.manage')}</Text>
+        <Text style={[styles.title, { color: theme.text }]}>
+          {t("group.manage")}
+        </Text>
         <Pressable
-          onPress={() => { setIsAdding(true); setEditingGroup(null); }}
-          style={({ pressed }) => [styles.addBtn, { backgroundColor: theme.primary, opacity: pressed ? 0.7 : 1 }]}
+          onPress={() => {
+            setIsAdding(true);
+            setEditingGroup(null);
+          }}
+          style={({ pressed }) => [
+            styles.addBtn,
+            { backgroundColor: theme.primary, opacity: pressed ? 0.7 : 1 },
+          ]}
         >
           <Ionicons name="add" size={20} color="#FFF" />
         </Pressable>
@@ -92,13 +111,26 @@ export function GroupManageSheet({ visible, onClose }: Props) {
 
       {/* Add new group */}
       {isAdding && (
-        <View style={[styles.editBox, { backgroundColor: theme.pageBg, borderColor: theme.border }]}>
+        <View
+          style={[
+            styles.editBox,
+            { backgroundColor: theme.pageBg, borderColor: theme.border },
+          ]}
+        >
           <TextInput
-            style={[styles.nameInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.cardBg }]}
-            placeholder={t('group.namePlaceholder')}
+            style={[
+              styles.nameInput,
+              {
+                color: theme.text,
+                borderColor: theme.border,
+                backgroundColor: theme.cardBg,
+              },
+            ]}
+            placeholder={t("group.namePlaceholder")}
             placeholderTextColor={theme.secondaryText}
             value={newName}
             onChangeText={setNewName}
+            maxLength={20}
             autoFocus
           />
           <View style={styles.colorRow}>
@@ -115,15 +147,29 @@ export function GroupManageSheet({ visible, onClose }: Props) {
             ))}
           </View>
           <View style={styles.editActions}>
-            <Pressable onPress={() => setIsAdding(false)} style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.6 : 1 }]}>
-              <Text style={[styles.cancelText, { color: theme.secondaryText }]}>{t('common.cancel')}</Text>
+            <Pressable
+              onPress={() => setIsAdding(false)}
+              style={({ pressed }) => [
+                styles.cancelBtn,
+                { opacity: pressed ? 0.6 : 1 },
+              ]}
+            >
+              <Text style={[styles.cancelText, { color: theme.secondaryText }]}>
+                {t("common.cancel")}
+              </Text>
             </Pressable>
             <Pressable
               onPress={handleAdd}
-              style={({ pressed }) => [styles.saveBtn, { backgroundColor: theme.primary, opacity: !newName.trim() ? 0.5 : pressed ? 0.75 : 1 }]}
+              style={({ pressed }) => [
+                styles.saveBtn,
+                {
+                  backgroundColor: theme.primary,
+                  opacity: !newName.trim() ? 0.5 : pressed ? 0.75 : 1,
+                },
+              ]}
               disabled={!newName.trim()}
             >
-              <Text style={styles.saveBtnText}>{t('common.add')}</Text>
+              <Text style={styles.saveBtnText}>{t("common.add")}</Text>
             </Pressable>
           </View>
         </View>
@@ -132,25 +178,45 @@ export function GroupManageSheet({ visible, onClose }: Props) {
       {/* Group list */}
       {groups.length === 0 && !isAdding ? (
         <Text style={[styles.empty, { color: theme.secondaryText }]}>
-          {t('group.empty')}
+          {t("group.empty")}
         </Text>
       ) : (
         <View>
           {groups.map((group) => (
             <View key={group.id}>
               {editingGroup?.id === group.id ? (
-                <View style={[styles.editBox, { backgroundColor: theme.pageBg, borderColor: theme.border }]}>
+                <View
+                  style={[
+                    styles.editBox,
+                    {
+                      backgroundColor: theme.pageBg,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                >
                   <TextInput
-                    style={[styles.nameInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.cardBg }]}
+                    style={[
+                      styles.nameInput,
+                      {
+                        color: theme.text,
+                        borderColor: theme.border,
+                        backgroundColor: theme.cardBg,
+                      },
+                    ]}
                     value={editingGroup.name}
-                    onChangeText={(val) => setEditingGroup({ ...editingGroup, name: val })}
+                    onChangeText={(val) =>
+                      setEditingGroup({ ...editingGroup, name: val })
+                    }
+                    maxLength={20}
                     autoFocus
                   />
                   <View style={styles.colorRow}>
                     {PRESET_COLORS.map((c) => (
                       <Pressable
                         key={c}
-                        onPress={() => setEditingGroup({ ...editingGroup, color: c })}
+                        onPress={() =>
+                          setEditingGroup({ ...editingGroup, color: c })
+                        }
                         style={({ pressed }) => [
                           styles.colorDot,
                           { backgroundColor: c, opacity: pressed ? 0.7 : 1 },
@@ -160,36 +226,86 @@ export function GroupManageSheet({ visible, onClose }: Props) {
                     ))}
                   </View>
                   <View style={styles.editActions}>
-                    <Pressable onPress={() => setEditingGroup(null)} style={({ pressed }) => [styles.cancelBtn, { opacity: pressed ? 0.6 : 1 }]}>
-                      <Text style={[styles.cancelText, { color: theme.secondaryText }]}>{t('common.cancel')}</Text>
+                    <Pressable
+                      onPress={() => setEditingGroup(null)}
+                      style={({ pressed }) => [
+                        styles.cancelBtn,
+                        { opacity: pressed ? 0.6 : 1 },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.cancelText,
+                          { color: theme.secondaryText },
+                        ]}
+                      >
+                        {t("common.cancel")}
+                      </Text>
                     </Pressable>
                     <Pressable
                       onPress={handleSaveEdit}
-                      style={({ pressed }) => [styles.saveBtn, { backgroundColor: theme.primary, opacity: pressed ? 0.75 : 1 }]}
+                      style={({ pressed }) => [
+                        styles.saveBtn,
+                        {
+                          backgroundColor: theme.primary,
+                          opacity: pressed ? 0.75 : 1,
+                        },
+                      ]}
                     >
-                      <Text style={styles.saveBtnText}>{t('common.save')}</Text>
+                      <Text style={styles.saveBtnText}>{t("common.save")}</Text>
                     </Pressable>
                   </View>
                 </View>
               ) : (
-                <View style={[styles.groupRow, { borderBottomColor: theme.border }]}>
-                  <View style={[styles.groupStrip, { backgroundColor: group.color }]} />
-                  <View style={[styles.groupPill, { backgroundColor: withAlpha(group.color, 0.12) }]}>
-                    <Text style={[styles.groupName, { color: group.color }]}>{group.name}</Text>
+                <View
+                  style={[styles.groupRow, { borderBottomColor: theme.border }]}
+                >
+                  <View
+                    style={[
+                      styles.groupStrip,
+                      { backgroundColor: group.color },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.groupPill,
+                      { backgroundColor: withAlpha(group.color, 0.12) },
+                    ]}
+                  >
+                    <Text style={[styles.groupName, { color: group.color }]}>
+                      {group.name}
+                    </Text>
                   </View>
                   <Pressable
-                    onPress={() => { setEditingGroup(group); setIsAdding(false); }}
+                    onPress={() => {
+                      setEditingGroup(group);
+                      setIsAdding(false);
+                    }}
                     hitSlop={spacing.sm}
-                    style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.6 : 1 }]}
+                    style={({ pressed }) => [
+                      styles.iconBtn,
+                      { opacity: pressed ? 0.6 : 1 },
+                    ]}
                   >
-                    <Ionicons name="pencil-outline" size={18} color={theme.secondaryText} />
+                    <Ionicons
+                      name="pencil-outline"
+                      size={18}
+                      color={theme.secondaryText}
+                    />
                   </Pressable>
                   <Pressable
                     onPress={() => handleDelete(group)}
                     hitSlop={spacing.sm}
-                    style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.6 : 1 }]}
+                    style={({ pressed }) => [
+                      styles.iconBtn,
+                      { opacity: pressed ? 0.6 : 1 },
+                    ]}
                   >
-                    <Ionicons name="trash-outline" size={18} color={theme.danger} />
+                    <Ionicons
+                      name="trash-outline"
+                      size={18}
+                      color={theme.danger}
+                    />
                   </Pressable>
                 </View>
               )}
@@ -203,25 +319,25 @@ export function GroupManageSheet({ visible, onClose }: Props) {
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: spacing.md,
   },
   title: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   addBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   groupRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: spacing.sm + 2,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: spacing.sm,
@@ -239,7 +355,7 @@ const styles = StyleSheet.create({
   },
   groupName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   iconBtn: {
     padding: spacing.xs,
@@ -258,8 +374,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   colorRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
   },
   colorDot: {
@@ -269,16 +385,16 @@ const styles = StyleSheet.create({
   },
   colorDotSelected: {
     borderWidth: 3,
-    borderColor: '#FFF',
-    shadowColor: '#000',
+    borderColor: "#FFF",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
     elevation: 3,
   },
   editActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "flex-end",
     gap: spacing.sm,
   },
   cancelBtn: {
@@ -287,7 +403,7 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   saveBtn: {
     paddingHorizontal: spacing.md,
@@ -295,12 +411,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.button,
   },
   saveBtnText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   empty: {
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: spacing.xl,
     fontSize: 14,
     lineHeight: 22,

@@ -1,17 +1,19 @@
-import React from 'react';
-import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useThemeColors } from '../../lib/useTheme';
-import { useTranslation } from '../../lib/useTranslation';
-import { spacing, typography } from '../../lib/theme';
+import React from "react";
+import { Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useThemeColors } from "../../lib/useTheme";
+import { useTranslation } from "../../lib/useTranslation";
+import { spacing, typography } from "../../lib/theme";
 
-type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
-const TAB_ICONS: Record<string, { active: IoniconsName; inactive: IoniconsName }> = {
-  index: { active: 'home', inactive: 'home-outline' },
-  tasks: { active: 'checkmark-circle', inactive: 'checkmark-circle-outline' },
-  calendar: { active: 'calendar', inactive: 'calendar-outline' },
+const TAB_ICONS: Record<
+  string,
+  { active: IoniconsName; inactive: IoniconsName }
+> = {
+  index: { active: "home", inactive: "home-outline" },
+  tasks: { active: "checkmark-circle", inactive: "checkmark-circle-outline" },
 };
 
 export default function TabLayout() {
@@ -24,7 +26,7 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: theme.cardBg + 'F0',
+          backgroundColor: theme.cardBg + "F0",
           borderTopColor: theme.border,
           height: 56 + insets.bottom,
           paddingBottom: insets.bottom,
@@ -37,7 +39,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: t('tab.home'),
+          title: t("tab.home"),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name={focused ? TAB_ICONS.index.active : TAB_ICONS.index.inactive}
@@ -50,23 +52,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="tasks"
         options={{
-          title: t('tab.tasks'),
+          title: t("tab.tasks"),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name={focused ? TAB_ICONS.tasks.active : TAB_ICONS.tasks.inactive}
-              size={24}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="calendar"
-        options={{
-          title: t('tab.calendar'),
-          tabBarIcon: ({ focused, color }) => (
-            <Ionicons
-              name={focused ? TAB_ICONS.calendar.active : TAB_ICONS.calendar.inactive}
               size={24}
               color={color}
             />

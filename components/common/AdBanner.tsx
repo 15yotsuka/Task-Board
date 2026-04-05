@@ -1,8 +1,8 @@
 import React from 'react';
 
-// react-native-google-mobile-ads を v1.0.0 から除外。
-// ObjCTurboModule::performVoidMethodInvocation でのクラッシュ原因であるため。
-// 広告は v1.0.1 以降で再導入予定。
+// Google Mobile Ads SDK はObjCTurboModule::performVoidInvocationでSIGABRTクラッシュが発生。
+// react-native-google-mobile-ads (Build 8-14, 18) / expo-ads-admob (Build 18) 両方で確認済み。
+// AppLovin MAX など別SDKでの代替を検討予定（審査通過後）。
 export function AdBanner() {
   return null;
 }

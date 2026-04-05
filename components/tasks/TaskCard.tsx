@@ -1,14 +1,20 @@
-import React, { useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { useShallow } from 'zustand/react/shallow';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming, Easing } from 'react-native-reanimated';
-import { Todo } from '../../store/types';
-import { useThemeColors } from '../../lib/useTheme';
-import { formatDate, isOverdue } from '../../lib/dateUtils';
-import { PriorityBadge } from '../common/PriorityBadge';
-import { CategoryPill } from '../common/CategoryPill';
-import { radius, spacing, shadow, withAlpha } from '../../lib/theme';
-import { useAppStore } from '../../store/useAppStore';
+import React, { useEffect } from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import { useShallow } from "zustand/react/shallow";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
+import { Todo } from "../../store/types";
+import { useThemeColors } from "../../lib/useTheme";
+import { formatDate, isOverdue, getSection } from "../../lib/dateUtils";
+import { PriorityBadge } from "../common/PriorityBadge";
+import { CategoryPill } from "../common/CategoryPill";
+import { radius, spacing, shadow, withAlpha } from "../../lib/theme";
+import { useAppStore } from "../../store/useAppStore";
 
 const CHECKBOX_SIZE = 22;
 
@@ -22,7 +28,15 @@ interface Props {
   onSelect?: () => void;
 }
 
-export function TaskCard({ todo, onPress, onToggleComplete, isSelectionMode, isSelected, onLongPress, onSelect }: Props) {
+export function TaskCard({
+  todo,
+  onPress,
+  onToggleComplete,
+  isSelectionMode,
+  isSelected,
+  onLongPress,
+  onSelect,
+}: Props) {
   const theme = useThemeColors();
   const scale = useSharedValue(1);
   const pressOpacity = useSharedValue(1);
@@ -33,6 +47,10 @@ export function TaskCard({ todo, onPress, onToggleComplete, isSelectionMode, isS
   const group = groups.find((g) => g.id === todo.groupId);
   const stripColor = group?.color ?? category?.color ?? theme.border;
   const overdue = !todo.isCompleted && isOverdue(todo.dueDate);
+  const section = getSection(todo.dueDate, todo.isCompleted);
+  const dueDateRed =
+    !todo.isCompleted &&
+    (overdue || section === "today" || todo.priority === "high");
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -80,7 +98,9 @@ export function TaskCard({ todo, onPress, onToggleComplete, isSelectionMode, isS
           animatedStyle,
           shadow.sm,
           {
-            backgroundColor: isSelected ? withAlpha(theme.primary, 0.08) : theme.cardBg,
+            backgroundColor: isSelected
+              ? withAlpha(theme.primary, 0.08)
+              : theme.cardBg,
             borderColor: isSelected ? theme.primary : theme.border,
             borderWidth: isSelected ? 1.5 : StyleSheet.hairlineWidth,
           },
@@ -100,11 +120,15 @@ export function TaskCard({ todo, onPress, onToggleComplete, isSelectionMode, isS
                 styles.checkbox,
                 {
                   borderColor: todo.isCompleted ? theme.success : theme.border,
-                  backgroundColor: todo.isCompleted ? theme.success : 'transparent',
+                  backgroundColor: todo.isCompleted
+                    ? theme.success
+                    : "transparent",
                 },
               ]}
             >
-              <Animated.Text style={[styles.checkmark, checkmarkStyle]}>✓</Animated.Text>
+              <Animated.Text style={[styles.checkmark, checkmarkStyle]}>
+                ✓
+              </Animated.Text>
             </Pressable>
 
             <Text
@@ -112,7 +136,9 @@ export function TaskCard({ todo, onPress, onToggleComplete, isSelectionMode, isS
                 styles.title,
                 {
                   color: theme.text,
-                  textDecorationLine: todo.isCompleted ? 'line-through' : 'none',
+                  textDecorationLine: todo.isCompleted
+                    ? "line-through"
+                    : "none",
                 },
               ]}
               numberOfLines={1}
@@ -124,7 +150,7 @@ export function TaskCard({ todo, onPress, onToggleComplete, isSelectionMode, isS
               <Text
                 style={[
                   styles.dueDate,
-                  { color: overdue ? theme.danger : theme.secondaryText },
+                  { color: dueDateRed ? theme.danger : theme.secondaryText },
                 ]}
               >
                 {formatDate(todo.dueDate)}
@@ -136,7 +162,7 @@ export function TaskCard({ todo, onPress, onToggleComplete, isSelectionMode, isS
                   styles.selCircle,
                   {
                     borderColor: isSelected ? theme.primary : theme.border,
-                    backgroundColor: isSelected ? theme.primary : 'transparent',
+                    backgroundColor: isSelected ? theme.primary : "transparent",
                   },
                 ]}
               >
@@ -148,7 +174,13 @@ export function TaskCard({ todo, onPress, onToggleComplete, isSelectionMode, isS
           {/* Row 2: Memo preview */}
           {todo.memo ? (
             <Text
-              style={[styles.memo, { color: theme.secondaryText, marginLeft: CHECKBOX_SIZE + spacing.sm }]}
+              style={[
+                styles.memo,
+                {
+                  color: theme.secondaryText,
+                  marginLeft: CHECKBOX_SIZE + spacing.sm,
+                },
+              ]}
               numberOfLines={1}
             >
               {todo.memo}
@@ -156,14 +188,28 @@ export function TaskCard({ todo, onPress, onToggleComplete, isSelectionMode, isS
           ) : null}
 
           {/* Row 3: Badges */}
-          <View style={[styles.badgeRow, { marginLeft: CHECKBOX_SIZE + spacing.sm }]}>
+          <View
+            style={[
+              styles.badgeRow,
+              { marginLeft: CHECKBOX_SIZE + spacing.sm },
+            ]}
+          >
             {group && (
-              <View style={[styles.groupPill, { backgroundColor: withAlpha(group.color, 0.12) }]}>
-                <Text style={[styles.groupPillText, { color: group.color }]}>{group.name}</Text>
+              <View
+                style={[
+                  styles.groupPill,
+                  { backgroundColor: withAlpha(group.color, 0.12) },
+                ]}
+              >
+                <Text style={[styles.groupPillText, { color: group.color }]}>
+                  {group.name}
+                </Text>
               </View>
             )}
             <PriorityBadge priority={todo.priority} />
-            {category && <CategoryPill name={category.name} color={category.color} />}
+            {category && (
+              <CategoryPill name={category.name} color={category.color} />
+            )}
           </View>
         </View>
       </Animated.View>
@@ -173,10 +219,10 @@ export function TaskCard({ todo, onPress, onToggleComplete, isSelectionMode, isS
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderRadius: radius.card,
     borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: spacing.sm,
   },
   strip: {
@@ -189,8 +235,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
   },
   checkbox: {
@@ -198,23 +244,23 @@ const styles = StyleSheet.create({
     height: CHECKBOX_SIZE,
     borderRadius: CHECKBOX_SIZE / 2,
     borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     flexShrink: 0,
   },
   checkmark: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   title: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     flex: 1,
   },
   dueDate: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
     flexShrink: 0,
   },
   memo: {
@@ -222,10 +268,10 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   badgeRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.xs + 2,
     marginTop: 2,
-    flexWrap: 'wrap',
+    flexWrap: "wrap",
   },
   groupPill: {
     paddingHorizontal: spacing.sm,
@@ -234,21 +280,21 @@ const styles = StyleSheet.create({
   },
   groupPillText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   selCircle: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     flexShrink: 0,
     marginLeft: spacing.xs,
   },
   selCheck: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

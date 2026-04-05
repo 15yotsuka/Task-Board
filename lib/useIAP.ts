@@ -40,8 +40,16 @@ export function useIAP(active = false) {
     return () => { endConnection().catch(() => {}); };
   }, [active]);
 
+  const productReady = products.some((p) => p.id === PRODUCT_ID);
+
   const purchase = useCallback(async () => {
     if (!connected || adsRemoved) return;
+    if (!productReady) {
+      // 商品未ロード時は再フェッチを試みてからユーザーに通知
+      try { await fetchProducts({ skus: [PRODUCT_ID] }); } catch (_) {}
+      Alert.alert(t('iap.error'), t('iap.productNotReady'));
+      return;
+    }
     try {
       await requestPurchase({
         type: 'in-app',
@@ -54,7 +62,7 @@ export function useIAP(active = false) {
         Alert.alert(t('iap.error'), t('iap.purchaseFailed'));
       }
     }
-  }, [connected, adsRemoved, requestPurchase, t]);
+  }, [connected, adsRemoved, productReady, fetchProducts, requestPurchase, t]);
 
   const restore = useCallback(async () => {
     try {
@@ -71,5 +79,5 @@ export function useIAP(active = false) {
     }
   }, [setAdsRemoved, t]);
 
-  return { adsRemoved, loading: !connected, purchase, restore };
+  return { adsRemoved, loading: !connected || !productReady, purchase, restore };
 }

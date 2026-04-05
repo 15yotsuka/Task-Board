@@ -20,17 +20,18 @@ def get_font(size, bold=True):
         return ImageFont.truetype(FONT_FALLBACK, size)
 
 # ---- 実機スクリーンショット (1179x2556 iPhone 15) ----
-REAL_SS_DIR = Path("/Users/yuotsuka/Downloads")
+REAL_SS_DIR = Path("/Users/yuotsuka/Downloads/画像")
 
-# crop_bottom: 広告バナー+タブバー領域を除去するピクセル数 (2556px画像の下から)
-# 380px 除去 → 2176px 残す (広告+タブバー+ホームインジケーター)
-AD_CROP_BOTTOM = 520  # 広告バナー+タブバー+ホームインジケーターを除去
+# crop_bottom: 広告バナー+タブバー+ホームインジケーター領域を除去するピクセル数
+# 広告あり画面: 230px (ad≈120px + tabbar≈98px + home indicator≈34px ≈ 252px → 230で広告除去)
+# 広告なし画面: 0px (タブバーもアプリコンテンツの一部として表示)
 
 SCREENS = [
     {
         "filename":    "ss1",
-        "source":      REAL_SS_DIR / "IMG_9661.PNG",   # タスク・ライト・日本語
-        "crop_bottom": AD_CROP_BOTTOM,
+        "source":      REAL_SS_DIR / "IMG_9661.PNG",   # タスク・ライト・日本語（広告なし）
+        "crop_bottom": 0,
+        "bg_color":    (242, 242, 247),  # iOS light system background
         "title":       "今日やることが\n一目でわかる",
         "subtitle":    "期限・優先度別にセクション整理",
         "grad_top":    (0, 122, 255),
@@ -38,8 +39,9 @@ SCREENS = [
     },
     {
         "filename":    "ss2",
-        "source":      REAL_SS_DIR / "IMG_9660.PNG",   # ホーム・ライト・日本語
-        "crop_bottom": AD_CROP_BOTTOM,
+        "source":      REAL_SS_DIR / "IMG_9660.PNG",   # ホーム・ライト・日本語（広告あり）
+        "crop_bottom": 420,
+        "bg_color":    (242, 242, 247),
         "title":       "タスクを、シンプルに。",
         "subtitle":    "カレンダーで締切を俯瞰する",
         "grad_top":    (0, 90, 200),
@@ -47,8 +49,9 @@ SCREENS = [
     },
     {
         "filename":    "ss3",
-        "source":      REAL_SS_DIR / "IMG_9663.PNG",   # ホーム・ダーク・日本語
-        "crop_bottom": AD_CROP_BOTTOM,
+        "source":      REAL_SS_DIR / "IMG_9663.PNG",   # ホーム・ダーク・日本語（広告あり）
+        "crop_bottom": 420,
+        "bg_color":    (28, 28, 30),    # iOS dark system background
         "title":       "ダークモードにも\n完全対応",
         "subtitle":    "目に優しい夜間テーマ搭載",
         "grad_top":    (0, 20, 45),
@@ -56,8 +59,9 @@ SCREENS = [
     },
     {
         "filename":    "ss4",
-        "source":      REAL_SS_DIR / "IMG_9666.PNG",   # 設定・ライト・日本語 (広告なし)
+        "source":      REAL_SS_DIR / "IMG_9666.PNG",   # 設定・ライト・日本語（広告なし）
         "crop_bottom": 0,
+        "bg_color":    (242, 242, 247),
         "title":       "テーマ・言語を\n自由にカスタマイズ",
         "subtitle":    "日本語・English 切り替え対応",
         "grad_top":    (0, 122, 255),
@@ -81,26 +85,22 @@ def load_app_img(screen):
     return img
 
 
-def fit_to_frame(app_img, inner_w, inner_h):
-    """アスペクト比を保ってフレーム内側にcenter-cropでフィット"""
+def fit_to_frame(app_img, inner_w, inner_h, bg_color=(242, 242, 247)):
+    """幅基準でフィット（水平クロップなし）。
+    縦が長すぎる場合は上部優先で下をクロップ。
+    縦が短い場合は下に背景色パディング。"""
     src_w, src_h = app_img.size
-    src_aspect   = src_w / src_h
-    inner_aspect = inner_w / inner_h
-
-    if src_aspect > inner_aspect:
-        # 横が余る → 高さ基準でスケール → 横をクロップ
-        new_h = inner_h
-        new_w = int(new_h * src_aspect)
-        tmp   = app_img.resize((new_w, new_h), Image.LANCZOS)
-        left  = (new_w - inner_w) // 2
-        return tmp.crop((left, 0, left + inner_w, inner_h))
+    new_w = inner_w
+    new_h = int(new_w * src_h / src_w)
+    tmp   = app_img.resize((new_w, new_h), Image.LANCZOS)
+    if new_h > inner_h:
+        # 縦が長すぎる → 上部優先で下をクロップ
+        return tmp.crop((0, 0, inner_w, inner_h))
     else:
-        # 縦が余る → 幅基準でスケール → 縦をクロップ
-        new_w = inner_w
-        new_h = int(new_w / src_aspect)
-        tmp   = app_img.resize((new_w, new_h), Image.LANCZOS)
-        top   = (new_h - inner_h) // 2
-        return tmp.crop((0, top, inner_w, top + inner_h))
+        # 縦が短い → 上揃え + 下に背景色パディング
+        result = Image.new("RGB", (inner_w, inner_h), bg_color)
+        result.paste(tmp, (0, 0))
+        return result
 
 
 def make_gradient_bg(width, height, color_top, color_bottom):
@@ -118,7 +118,7 @@ def make_gradient_bg(width, height, color_top, color_bottom):
 
 
 def composite_device(canvas, app_img, frame_x, frame_y, frame_w, frame_h,
-                      corner_radius, bezel, shadow_blur=40):
+                      corner_radius, bezel, shadow_blur=40, bg_color=(242, 242, 247)):
     W, H = canvas.size
 
     # ドロップシャドウ
@@ -151,7 +151,7 @@ def composite_device(canvas, app_img, frame_x, frame_y, frame_w, frame_h,
     inner_h = frame_h - bezel * 2
     inner_r = max(corner_radius - bezel, 8)
 
-    fitted  = fit_to_frame(app_img, inner_w, inner_h)
+    fitted  = fit_to_frame(app_img, inner_w, inner_h, bg_color)
 
     mask = Image.new("L", (inner_w, inner_h), 0)
     md   = ImageDraw.Draw(mask)
@@ -213,9 +213,10 @@ def gen_iphone(screen):
 
     place_text(canvas, screen, frame_y, W // 2, int(W * 0.063), int(W * 0.033))
 
-    app_img = load_app_img(screen)
-    canvas  = composite_device(canvas, app_img, frame_x, frame_y, frame_w, frame_h,
-                                corner_r, bezel, shadow_blur=42)
+    app_img  = load_app_img(screen)
+    bg_color = screen.get("bg_color", (242, 242, 247))
+    canvas   = composite_device(canvas, app_img, frame_x, frame_y, frame_w, frame_h,
+                                 corner_r, bezel, shadow_blur=42, bg_color=bg_color)
 
     out = OUT_IPHONE / f"{screen['filename']}.png"
     canvas.save(str(out))
@@ -236,9 +237,10 @@ def gen_ipad(screen):
 
     place_text(canvas, screen, frame_y, W // 2, int(W * 0.055), int(W * 0.030))
 
-    app_img = load_app_img(screen)
-    canvas  = composite_device(canvas, app_img, frame_x, frame_y, frame_w, frame_h,
-                                corner_r, bezel, shadow_blur=60)
+    app_img  = load_app_img(screen)
+    bg_color = screen.get("bg_color", (242, 242, 247))
+    canvas   = composite_device(canvas, app_img, frame_x, frame_y, frame_w, frame_h,
+                                 corner_r, bezel, shadow_blur=60, bg_color=bg_color)
 
     out = OUT_IPAD / f"{screen['filename']}.png"
     canvas.save(str(out))

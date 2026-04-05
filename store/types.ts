@@ -1,6 +1,6 @@
-export type Priority = 'high' | 'medium' | 'low';
-export type ThemeMode = 'system' | 'light' | 'dark';
-export type Language = 'ja' | 'en';
+export type Priority = "high" | "medium" | "low";
+export type ThemeMode = "system" | "light" | "dark";
+export type Language = "ja" | "en";
 
 export interface Group {
   id: string;
@@ -23,6 +23,7 @@ export interface Todo {
   title: string;
   memo: string;
   dueDate: string | null;
+  isDateOnly: boolean;
   priority: Priority;
   categoryId: string | null;
   groupId: string | null;
@@ -46,7 +47,9 @@ export interface AppState {
   notificationsEnabled: boolean;
   defaultNotificationMinutes: number;
 
-  addTodo: (todo: Omit<Todo, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => void;
+  addTodo: (
+    todo: Omit<Todo, "id" | "userId" | "createdAt" | "updatedAt">,
+  ) => string;
   updateTodo: (id: string, updates: Partial<Todo>) => void;
   deleteTodo: (id: string) => void;
   deleteTodos: (ids: string[]) => void;
@@ -55,11 +58,13 @@ export interface AppState {
   setHasSeenTutorial: (seen: boolean) => void;
   setAdsRemoved: (removed: boolean) => void;
 
-  addCategory: (category: Omit<Category, 'id' | 'userId' | 'createdAt'>) => void;
+  addCategory: (
+    category: Omit<Category, "id" | "userId" | "createdAt">,
+  ) => void;
   updateCategory: (id: string, updates: Partial<Category>) => void;
   deleteCategory: (id: string) => void;
 
-  addGroup: (group: Omit<Group, 'id' | 'createdAt'>) => void;
+  addGroup: (group: Omit<Group, "id" | "createdAt">) => void;
   updateGroup: (id: string, updates: Partial<Group>) => void;
   deleteGroup: (id: string) => void;
 

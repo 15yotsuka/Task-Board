@@ -1,14 +1,14 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState, Todo, Category, Group, ThemeMode, Language } from './types';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppState, Todo, Category, Group, ThemeMode, Language } from "./types";
+import { cancelTaskNotification } from "../lib/notifications";
 
-const CURRENT_SCHEMA_VERSION = 2;
+const CURRENT_SCHEMA_VERSION = 3;
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
 }
-
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -17,8 +17,8 @@ export const useAppStore = create<AppState>()(
       categories: [],
       groups: [],
       schemaVersion: CURRENT_SCHEMA_VERSION,
-      themeMode: 'system' as ThemeMode,
-      language: 'ja' as Language,
+      themeMode: "system" as ThemeMode,
+      language: "ja" as Language,
       hasSeenTutorial: false,
       adsRemoved: false,
       notificationsEnabled: false,
@@ -27,14 +27,16 @@ export const useAppStore = create<AppState>()(
       // === Todo Actions ===
       addTodo: (todoData) => {
         const now = new Date().toISOString();
+        const id = generateId();
         const newTodo: Todo = {
           ...todoData,
-          id: generateId(),
-          userId: '',
+          id,
+          userId: "",
           createdAt: now,
           updatedAt: now,
         };
         set((state) => ({ todos: [...state.todos, newTodo] }));
+        return id;
       },
 
       updateTodo: (id, updates) => {
@@ -55,13 +57,19 @@ export const useAppStore = create<AppState>()(
 
       deleteTodos: (ids) => {
         const idSet = new Set(ids);
-        set((state) => ({ todos: state.todos.filter((t) => !idSet.has(t.id)) }));
+        set((state) => ({
+          todos: state.todos.filter((t) => !idSet.has(t.id)),
+        }));
       },
 
       toggleComplete: (id) => {
         const todo = get().todos.find((t) => t.id === id);
         if (todo) {
-          get().updateTodo(id, { isCompleted: !todo.isCompleted });
+          const completing = !todo.isCompleted;
+          get().updateTodo(id, { isCompleted: completing });
+          if (completing) {
+            void cancelTaskNotification(id);
+          }
         }
       },
 
@@ -82,7 +90,7 @@ export const useAppStore = create<AppState>()(
         const newCategory: Category = {
           ...categoryData,
           id: generateId(),
-          userId: '',
+          userId: "",
           createdAt: new Date().toISOString(),
         };
         set((state) => ({ categories: [...state.categories, newCategory] }));
@@ -127,7 +135,7 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           categories: state.categories.filter((c) => c.id !== id),
           todos: state.todos.map((t) =>
-            t.categoryId === id ? { ...t, categoryId: null } : t
+            t.categoryId === id ? { ...t, categoryId: null } : t,
           ),
         }));
       },
@@ -144,7 +152,9 @@ export const useAppStore = create<AppState>()(
 
       updateGroup: (id, updates) => {
         set((state) => ({
-          groups: state.groups.map((g) => (g.id === id ? { ...g, ...updates } : g)),
+          groups: state.groups.map((g) =>
+            g.id === id ? { ...g, ...updates } : g,
+          ),
         }));
       },
 
@@ -152,28 +162,39 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           groups: state.groups.filter((g) => g.id !== id),
           todos: state.todos.map((t) =>
-            t.groupId === id ? { ...t, groupId: null } : t
+            t.groupId === id ? { ...t, groupId: null } : t,
           ),
         }));
       },
     }),
     {
-      name: 'taskboard-data',
+      name: "taskboard-data",
       storage: createJSONStorage(() => AsyncStorage),
-      version: CURRENT_SCHEMA_VERSION,
+      version: 3,
       migrate: (persistedState: any, version: number) => {
+        let state = persistedState;
         if (version < 2) {
           // v2: add groups, add groupId to todos
-          return {
-            ...persistedState,
-            groups: persistedState.groups ?? [],
-            todos: (persistedState.todos ?? []).map((t: any) => ({
+          state = {
+            ...state,
+            groups: state.groups ?? [],
+            todos: (state.todos ?? []).map((t: any) => ({
               ...t,
               groupId: t.groupId ?? null,
             })),
           };
         }
-        return persistedState;
+        if (version < 3) {
+          // v3: add isDateOnly to todos
+          state = {
+            ...state,
+            todos: (state.todos ?? []).map((t: any) => ({
+              ...t,
+              isDateOnly: t.isDateOnly ?? false,
+            })),
+          };
+        }
+        return state;
       },
       partialize: (state) => ({
         todos: state.todos,
@@ -187,6 +208,6 @@ export const useAppStore = create<AppState>()(
         notificationsEnabled: state.notificationsEnabled,
         defaultNotificationMinutes: state.defaultNotificationMinutes,
       }),
-    }
-  )
+    },
+  ),
 );

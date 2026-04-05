@@ -3,7 +3,7 @@
     "name": "TaskBoard",
     "slug": "taskboard",
     "scheme": "taskboard",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -15,20 +15,17 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yuotsuka.taskboard",
-      "buildNumber": "16",
+      "buildNumber": "27",
       "infoPlist": {
         "NSUserNotificationUsageDescription": "タスクの締切前にリマインダー通知をお送りします。",
-        "UIBackgroundModes": [
-          "remote-notification"
-        ]
+        "UIBackgroundModes": ["remote-notification"],
+        "CFBundleDisplayName": "かんたんタスクカレンダー"
       },
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": [
           {
             "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-            "NSPrivacyAccessedAPITypeReasons": [
-              "CA92.1"
-            ]
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
           }
         ]
       }
@@ -39,7 +36,8 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "package": "com.yuotsuka.taskboard"
     },
     "web": {
       "favicon": "./assets/favicon.png"

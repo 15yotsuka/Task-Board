@@ -1,4 +1,10 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+  useEffect,
+} from "react";
 import {
   View,
   Text,
@@ -7,67 +13,176 @@ import {
   StyleSheet,
   SectionList,
   Alert,
-} from 'react-native';
-import type { SectionListData } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useShallow } from 'zustand/react/shallow';
-import { useAppStore } from '../../store/useAppStore';
-import { useThemeColors } from '../../lib/useTheme';
-import { useTranslation } from '../../lib/useTranslation';
-import { getSection, Section } from '../../lib/dateUtils';
-import type { TranslationKey } from '../../lib/i18n/index';
-import { startOfDay, parseISO, isValid } from 'date-fns';
-import { TaskCard } from '../../components/tasks/TaskCard';
-import { AddTaskForm } from '../../components/tasks/AddTaskForm';
-import { TaskDetailModal } from '../../components/tasks/TaskDetailModal';
-import { GroupManageSheet } from '../../components/groups/GroupManageSheet';
-import { Todo } from '../../store/types';
-import { radius, spacing, typography, shadow, withAlpha } from '../../lib/theme';
-import { ScreenHeader } from '../../components/common/ScreenHeader';
-import { AdBanner } from '../../components/common/AdBanner';
+} from "react-native";
+import type { SectionListData } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useShallow } from "zustand/react/shallow";
+import { useAppStore } from "../../store/useAppStore";
+import { useThemeColors } from "../../lib/useTheme";
+import { useTranslation } from "../../lib/useTranslation";
+import { getSection, getSectionLabel, Section } from "../../lib/dateUtils";
+import {
+  startOfDay,
+  parseISO,
+  isValid,
+  addDays,
+  isSameDay,
+  format,
+} from "date-fns";
+import { ja as jaLocale } from "date-fns/locale";
+import { cancelAllTaskNotifications } from "../../lib/notifications";
+import { TaskCard } from "../../components/tasks/TaskCard";
+import { AddTaskForm } from "../../components/tasks/AddTaskForm";
+import { TaskDetailModal } from "../../components/tasks/TaskDetailModal";
+import { GroupManageSheet } from "../../components/groups/GroupManageSheet";
+import { Todo } from "../../store/types";
+import {
+  radius,
+  spacing,
+  typography,
+  shadow,
+  withAlpha,
+} from "../../lib/theme";
+import { ScreenHeader } from "../../components/common/ScreenHeader";
+import { AdBanner } from "../../components/common/AdBanner";
 
-type SortMode = 'dueDate' | 'manual' | 'priority';
-type FilterMode = 'incomplete' | 'completed' | 'all';
+type SortMode = "dueDate" | "manual" | "priority";
+type FilterMode = "incomplete" | "completed" | "all";
 type TaskSection = SectionListData<Todo, { title: string; section: Section }>;
 
-const SECTION_KEY_MAP: Record<Section, TranslationKey> = {
-  overdue: 'section.overdue',
-  today: 'section.today',
-  thisWeek: 'section.thisWeek',
-  thisMonth: 'section.thisMonth',
-  later: 'section.later',
-  unset: 'section.unset',
-  completed: 'section.completed',
-};
+// ── Compact Week Strip ─────────────────────────────────────────────────────
+function CompactWeekStrip({
+  todos,
+  theme,
+  language,
+}: {
+  todos: Todo[];
+  theme: ReturnType<typeof import("../../lib/useTheme").useThemeColors>;
+  language: string;
+}) {
+  const days = useMemo(() => {
+    const today = startOfDay(new Date());
+    return Array.from({ length: 7 }, (_, i) => addDays(today, i));
+  }, []);
+
+  const counts = useMemo(
+    () =>
+      days.map(
+        (day) =>
+          todos.filter((t) => {
+            if (!t.dueDate || t.isCompleted) return false;
+            const d = parseISO(t.dueDate);
+            return isValid(d) && isSameDay(d, day);
+          }).length,
+      ),
+    [days, todos],
+  );
+
+  return (
+    <View
+      style={[
+        weekStripStyles.row,
+        { backgroundColor: theme.cardBg, borderColor: theme.border },
+      ]}
+    >
+      {days.map((day, i) => {
+        const isToday = i === 0;
+        const count = counts[i];
+        const dayName = format(day, language === "en" ? "EEE" : "E", {
+          locale: jaLocale,
+        });
+        const dayNum = format(day, "d");
+        return (
+          <View key={i} style={weekStripStyles.cell}>
+            <Text
+              style={[
+                weekStripStyles.dayName,
+                {
+                  color: isToday ? theme.primary : theme.secondaryText,
+                },
+              ]}
+            >
+              {dayName}
+            </Text>
+            <View
+              style={[
+                weekStripStyles.numWrap,
+                isToday && { backgroundColor: theme.primary },
+              ]}
+            >
+              <Text
+                style={[
+                  weekStripStyles.dayNum,
+                  { color: isToday ? "#FFF" : theme.text },
+                ]}
+              >
+                {dayNum}
+              </Text>
+            </View>
+            <View style={weekStripStyles.dotRow}>
+              {count > 0 && (
+                <View
+                  style={[
+                    weekStripStyles.dot,
+                    {
+                      backgroundColor: isToday
+                        ? theme.primary
+                        : theme.secondaryText,
+                    },
+                  ]}
+                />
+              )}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+// ───────────────────────────────────────────────────────────────────────────
 
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
-const SECTION_ORDER: Section[] = ['overdue', 'today', 'thisWeek', 'thisMonth', 'later', 'unset', 'completed'];
+const SECTION_ORDER: Section[] = [
+  "overdue",
+  "today",
+  "thisWeek",
+  "thisMonth",
+  "later",
+  "unset",
+  "completed",
+];
 
 export default function TasksScreen() {
   const theme = useThemeColors();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, locale, language } = useTranslation();
 
-  const SORT_OPTIONS = useMemo(() => [
-    { key: 'dueDate' as SortMode, label: t('sort.dueDate') },
-    { key: 'manual' as SortMode, label: t('sort.manual') },
-    { key: 'priority' as SortMode, label: t('sort.priority') },
-  ], [t]);
+  const SORT_OPTIONS = useMemo(
+    () => [
+      { key: "dueDate" as SortMode, label: t("sort.dueDate") },
+      { key: "manual" as SortMode, label: t("sort.manual") },
+      { key: "priority" as SortMode, label: t("sort.priority") },
+    ],
+    [t],
+  );
 
-  const FILTER_OPTIONS = useMemo(() => [
-    { key: 'all' as FilterMode, label: t('filter.all') },
-    { key: 'incomplete' as FilterMode, label: t('filter.incomplete') },
-    { key: 'completed' as FilterMode, label: t('filter.completed') },
-  ], [t]);
+  const FILTER_OPTIONS = useMemo(
+    () => [
+      { key: "all" as FilterMode, label: t("filter.all") },
+      { key: "incomplete" as FilterMode, label: t("filter.incomplete") },
+      { key: "completed" as FilterMode, label: t("filter.completed") },
+    ],
+    [t],
+  );
   const todos = useAppStore(useShallow((s) => s.todos));
   const categories = useAppStore(useShallow((s) => s.categories));
   const groups = useAppStore(useShallow((s) => s.groups));
   const toggleComplete = useAppStore((s) => s.toggleComplete);
   const deleteTodos = useAppStore((s) => s.deleteTodos);
 
-  const [sortMode, setSortMode] = useState<SortMode>('dueDate');
-  const [filterMode, setFilterMode] = useState<FilterMode>('all');
+  const [sortMode, setSortMode] = useState<SortMode>("dueDate");
+  const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null);
   const [filterGroupId, setFilterGroupId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -75,13 +190,19 @@ export default function TasksScreen() {
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const selectedIdsSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  const chipScrollRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    chipScrollRef.current?.scrollTo({ x: 0, animated: false });
+  }, [sortMode, filterMode]);
 
   const filteredAndSorted = useMemo(() => {
     let filtered = [...todos];
 
-    if (filterMode === 'incomplete') {
+    if (filterMode === "incomplete") {
       filtered = filtered.filter((t) => !t.isCompleted);
-    } else if (filterMode === 'completed') {
+    } else if (filterMode === "completed") {
       filtered = filtered.filter((t) => t.isCompleted);
     }
 
@@ -94,13 +215,13 @@ export default function TasksScreen() {
     }
 
     filtered.sort((a, b) => {
-      if (sortMode === 'dueDate') {
+      if (sortMode === "dueDate") {
         if (!a.dueDate && !b.dueDate) return 0;
         if (!a.dueDate) return 1;
         if (!b.dueDate) return -1;
         return a.dueDate.localeCompare(b.dueDate);
       }
-      if (sortMode === 'manual') {
+      if (sortMode === "manual") {
         return a.orderIndex - b.orderIndex;
       }
       return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
@@ -111,7 +232,13 @@ export default function TasksScreen() {
 
   const sections = useMemo(() => {
     const grouped: Record<Section, Todo[]> = {
-      overdue: [], today: [], thisWeek: [], thisMonth: [], later: [], unset: [], completed: [],
+      overdue: [],
+      today: [],
+      thisWeek: [],
+      thisMonth: [],
+      later: [],
+      unset: [],
+      completed: [],
     };
 
     filteredAndSorted.forEach((t) => {
@@ -119,14 +246,14 @@ export default function TasksScreen() {
       grouped[section].push(t);
     });
 
-    return SECTION_ORDER
-      .filter((key) => grouped[key].length > 0)
-      .map((key) => ({
-        title: t(SECTION_KEY_MAP[key]),
+    return SECTION_ORDER.filter((key) => grouped[key].length > 0).map(
+      (key) => ({
+        title: getSectionLabel(key, language as "ja" | "en", locale),
         data: grouped[key],
         section: key,
-      }));
-  }, [filteredAndSorted, t]);
+      }),
+    );
+  }, [filteredAndSorted, language, locale]);
 
   const handleOpenDetail = useCallback((todo: Todo) => {
     setSelectedTodo(todo);
@@ -144,23 +271,28 @@ export default function TasksScreen() {
 
   const handleSelect = useCallback((id: string) => {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }, []);
 
   const handleDeleteSelected = useCallback(() => {
     if (selectedIds.length === 0) return;
-    Alert.alert(t('tasks.deleteAlert.title'), t('tasks.deleteAlert.message', { count: selectedIds.length }), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('common.delete'),
-        style: 'destructive',
-        onPress: () => {
-          deleteTodos(selectedIds);
-          exitSelectionMode();
+    Alert.alert(
+      t("tasks.deleteAlert.title"),
+      t("tasks.deleteAlert.message", { count: selectedIds.length }),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("common.delete"),
+          style: "destructive",
+          onPress: () => {
+            void cancelAllTaskNotifications(selectedIds.map((id) => ({ id })));
+            deleteTodos(selectedIds);
+            exitSelectionMode();
+          },
         },
-      },
-    ]);
+      ],
+    );
   }, [selectedIds, deleteTodos, exitSelectionMode, t]);
 
   const handleBulkDelete = useCallback(() => {
@@ -176,57 +308,124 @@ export default function TasksScreen() {
     const completedIds = todos.filter((t) => t.isCompleted).map((t) => t.id);
     const allIds = todos.map((t) => t.id);
 
-    Alert.alert(t('tasks.bulkDelete.title'), t('tasks.bulkDelete.message'), [
+    Alert.alert(t("tasks.bulkDelete.title"), t("tasks.bulkDelete.message"), [
       {
-        text: t('tasks.bulkDelete.overdue', { count: overdueIds.length }),
-        style: overdueIds.length === 0 ? 'default' : 'destructive',
-        onPress: overdueIds.length === 0 ? undefined : () => {
-          Alert.alert(t('common.confirm'), t('tasks.bulkDelete.confirmOverdue', { count: overdueIds.length }), [
-            { text: t('common.cancel'), style: 'cancel' },
-            { text: t('common.delete'), style: 'destructive', onPress: () => deleteTodos(overdueIds) },
-          ]);
-        },
+        text: t("tasks.bulkDelete.overdue", { count: overdueIds.length }),
+        style: overdueIds.length === 0 ? "default" : "destructive",
+        onPress:
+          overdueIds.length === 0
+            ? undefined
+            : () => {
+                Alert.alert(
+                  t("common.confirm"),
+                  t("tasks.bulkDelete.confirmOverdue", {
+                    count: overdueIds.length,
+                  }),
+                  [
+                    { text: t("common.cancel"), style: "cancel" },
+                    {
+                      text: t("common.delete"),
+                      style: "destructive",
+                      onPress: () => {
+                        void cancelAllTaskNotifications(
+                          overdueIds.map((id) => ({ id })),
+                        );
+                        deleteTodos(overdueIds);
+                      },
+                    },
+                  ],
+                );
+              },
       },
       {
-        text: t('tasks.bulkDelete.completed', { count: completedIds.length }),
-        style: completedIds.length === 0 ? 'default' : 'destructive',
-        onPress: completedIds.length === 0 ? undefined : () => {
-          Alert.alert(t('common.confirm'), t('tasks.bulkDelete.confirmCompleted', { count: completedIds.length }), [
-            { text: t('common.cancel'), style: 'cancel' },
-            { text: t('common.delete'), style: 'destructive', onPress: () => deleteTodos(completedIds) },
-          ]);
-        },
+        text: t("tasks.bulkDelete.completed", { count: completedIds.length }),
+        style: completedIds.length === 0 ? "default" : "destructive",
+        onPress:
+          completedIds.length === 0
+            ? undefined
+            : () => {
+                Alert.alert(
+                  t("common.confirm"),
+                  t("tasks.bulkDelete.confirmCompleted", {
+                    count: completedIds.length,
+                  }),
+                  [
+                    { text: t("common.cancel"), style: "cancel" },
+                    {
+                      text: t("common.delete"),
+                      style: "destructive",
+                      onPress: () => {
+                        void cancelAllTaskNotifications(
+                          completedIds.map((id) => ({ id })),
+                        );
+                        deleteTodos(completedIds);
+                      },
+                    },
+                  ],
+                );
+              },
       },
       {
-        text: t('tasks.bulkDelete.all', { count: allIds.length }),
-        style: allIds.length === 0 ? 'default' : 'destructive',
-        onPress: allIds.length === 0 ? undefined : () => {
-          Alert.alert(t('common.confirm'), t('tasks.bulkDelete.confirmAll', { count: allIds.length }), [
-            { text: t('common.cancel'), style: 'cancel' },
-            { text: t('common.delete'), style: 'destructive', onPress: () => deleteTodos(allIds) },
-          ]);
-        },
+        text: t("tasks.bulkDelete.all", { count: allIds.length }),
+        style: allIds.length === 0 ? "default" : "destructive",
+        onPress:
+          allIds.length === 0
+            ? undefined
+            : () => {
+                Alert.alert(
+                  t("common.confirm"),
+                  t("tasks.bulkDelete.confirmAll", { count: allIds.length }),
+                  [
+                    { text: t("common.cancel"), style: "cancel" },
+                    {
+                      text: t("common.delete"),
+                      style: "destructive",
+                      onPress: () => {
+                        void cancelAllTaskNotifications(
+                          allIds.map((id) => ({ id })),
+                        );
+                        deleteTodos(allIds);
+                      },
+                    },
+                  ],
+                );
+              },
       },
-      { text: t('common.cancel'), style: 'cancel' },
+      { text: t("common.cancel"), style: "cancel" },
     ]);
   }, [todos, deleteTodos, t]);
 
-  const renderItem = useCallback(({ item }: { item: Todo }) => (
-    <TaskCard
-      todo={item}
-      onPress={handleOpenDetail}
-      onToggleComplete={toggleComplete}
-      isSelectionMode={isSelectionMode}
-      isSelected={selectedIds.includes(item.id)}
-      onLongPress={() => handleLongPress(item.id)}
-      onSelect={() => handleSelect(item.id)}
-    />
-  ), [handleOpenDetail, toggleComplete, isSelectionMode, selectedIds, handleLongPress, handleSelect]);
+  const renderItem = useCallback(
+    ({ item }: { item: Todo }) => (
+      <TaskCard
+        todo={item}
+        onPress={handleOpenDetail}
+        onToggleComplete={toggleComplete}
+        isSelectionMode={isSelectionMode}
+        isSelected={selectedIdsSet.has(item.id)}
+        onLongPress={() => handleLongPress(item.id)}
+        onSelect={() => handleSelect(item.id)}
+      />
+    ),
+    [
+      handleOpenDetail,
+      toggleComplete,
+      isSelectionMode,
+      selectedIdsSet,
+      handleLongPress,
+      handleSelect,
+    ],
+  );
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.pageBg, paddingTop: insets.top }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: theme.pageBg, paddingTop: insets.top },
+      ]}
+    >
       <ScreenHeader
-        title={t('tab.tasks')}
+        title={t("tab.tasks")}
         right={
           <View style={styles.headerRight}>
             <Pressable
@@ -240,24 +439,46 @@ export default function TasksScreen() {
               onPress={() => setShowGroupManage(true)}
               style={({ pressed }) => [
                 styles.groupBtn,
-                { borderColor: theme.border, backgroundColor: theme.cardBg, opacity: pressed ? 0.6 : 1 },
+                {
+                  borderColor: theme.border,
+                  backgroundColor: theme.cardBg,
+                  opacity: pressed ? 0.6 : 1,
+                },
               ]}
             >
               <Ionicons name="layers-outline" size={14} color={theme.primary} />
-              <Text style={[styles.groupBtnText, { color: theme.primary }]}>{t('tasks.manageGroups')}</Text>
+              <Text style={[styles.groupBtnText, { color: theme.primary }]}>
+                {t("tasks.manageGroups")}
+              </Text>
             </Pressable>
           </View>
         }
       />
 
+      {/* Compact week strip */}
+      <CompactWeekStrip todos={todos} theme={theme} language={language} />
+
       {/* Selection mode bar */}
       {isSelectionMode && (
-        <View style={[styles.selectionBar, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
-          <Pressable onPress={exitSelectionMode} hitSlop={spacing.sm} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}>
-            <Text style={[styles.selectionBarAction, { color: theme.primary }]}>{t('common.cancel')}</Text>
+        <View
+          style={[
+            styles.selectionBar,
+            { backgroundColor: theme.cardBg, borderColor: theme.border },
+          ]}
+        >
+          <Pressable
+            onPress={exitSelectionMode}
+            hitSlop={spacing.sm}
+            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Text style={[styles.selectionBarAction, { color: theme.primary }]}>
+              {t("common.cancel")}
+            </Text>
           </Pressable>
           <Text style={[styles.selectionBarCount, { color: theme.text }]}>
-            {selectedIds.length > 0 ? t('tasks.selectedCount', { count: selectedIds.length }) : t('tasks.tapToSelect')}
+            {selectedIds.length > 0
+              ? t("tasks.selectedCount", { count: selectedIds.length })
+              : t("tasks.tapToSelect")}
           </Text>
           <Pressable
             onPress={handleDeleteSelected}
@@ -265,92 +486,141 @@ export default function TasksScreen() {
             hitSlop={spacing.sm}
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text style={[styles.selectionBarAction, { color: selectedIds.length > 0 ? theme.danger : theme.secondaryText }]}>
-              {t('common.delete')}
+            <Text
+              style={[
+                styles.selectionBarAction,
+                {
+                  color:
+                    selectedIds.length > 0 ? theme.danger : theme.secondaryText,
+                },
+              ]}
+            >
+              {t("common.delete")}
             </Text>
           </Pressable>
         </View>
       )}
 
       {/* Sort + Filter chips — single row */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.chipScroll, isSelectionMode && { display: 'none' }]} contentContainerStyle={styles.chipContent}>
-        {/* Sort */}
-        {SORT_OPTIONS.map((opt) => (
-          <Pressable
-            key={opt.key}
-            onPress={() => setSortMode(opt.key)}
-            style={({ pressed }) => [
-              styles.chip,
-              {
-                backgroundColor: sortMode === opt.key ? theme.primary : theme.cardBg,
-                borderColor: sortMode === opt.key ? theme.primary : theme.border,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <Text style={[styles.chipText, { color: sortMode === opt.key ? '#FFF' : theme.text }]}>
-              {opt.label}
-            </Text>
-          </Pressable>
-        ))}
+      {!isSelectionMode && (
+        <ScrollView
+          ref={chipScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipScroll}
+          contentContainerStyle={styles.chipContent}
+        >
+          {/* Sort */}
+          {SORT_OPTIONS.map((opt) => (
+            <Pressable
+              key={opt.key}
+              onPress={() => setSortMode(opt.key)}
+              style={({ pressed }) => [
+                styles.chip,
+                {
+                  backgroundColor:
+                    sortMode === opt.key ? theme.primary : theme.cardBg,
+                  borderColor:
+                    sortMode === opt.key ? theme.primary : theme.border,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  { color: sortMode === opt.key ? "#FFF" : theme.text },
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </Pressable>
+          ))}
 
-        {/* Divider */}
-        <View style={[styles.chipDivider, { backgroundColor: theme.border }]} />
+          {/* Divider */}
+          <View
+            style={[styles.chipDivider, { backgroundColor: theme.border }]}
+          />
 
-        {/* Filter */}
-        {FILTER_OPTIONS.map((opt) => (
-          <Pressable
-            key={opt.key}
-            onPress={() => setFilterMode(opt.key)}
-            style={({ pressed }) => [
-              styles.chip,
-              {
-                backgroundColor: filterMode === opt.key ? theme.primaryBg : theme.cardBg,
-                borderColor: filterMode === opt.key ? theme.primary : theme.border,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <Text style={[styles.chipText, { color: filterMode === opt.key ? theme.primary : theme.text }]}>
-              {opt.label}
-            </Text>
-          </Pressable>
-        ))}
-        {groups.map((g) => (
-          <Pressable
-            key={g.id}
-            onPress={() => setFilterGroupId(filterGroupId === g.id ? null : g.id)}
-            style={({ pressed }) => [
-              styles.chip,
-              {
-                backgroundColor: filterGroupId === g.id ? withAlpha(g.color, 0.12) : theme.cardBg,
-                borderColor: filterGroupId === g.id ? g.color : theme.border,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <View style={[styles.catDot, { backgroundColor: g.color }]} />
-            <Text style={[styles.chipText, { color: theme.text }]}>{g.name}</Text>
-          </Pressable>
-        ))}
-        {categories.map((cat) => (
-          <Pressable
-            key={cat.id}
-            onPress={() => setFilterCategoryId(filterCategoryId === cat.id ? null : cat.id)}
-            style={({ pressed }) => [
-              styles.chip,
-              {
-                backgroundColor: filterCategoryId === cat.id ? withAlpha(cat.color, 0.1) : theme.cardBg,
-                borderColor: filterCategoryId === cat.id ? cat.color : theme.border,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <View style={[styles.catDot, { backgroundColor: cat.color }]} />
-            <Text style={[styles.chipText, { color: theme.text }]}>{cat.name}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+          {/* Filter */}
+          {FILTER_OPTIONS.map((opt) => (
+            <Pressable
+              key={opt.key}
+              onPress={() => setFilterMode(opt.key)}
+              style={({ pressed }) => [
+                styles.chip,
+                {
+                  backgroundColor:
+                    filterMode === opt.key ? theme.primaryBg : theme.cardBg,
+                  borderColor:
+                    filterMode === opt.key ? theme.primary : theme.border,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  {
+                    color: filterMode === opt.key ? theme.primary : theme.text,
+                  },
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </Pressable>
+          ))}
+          {groups.map((g) => (
+            <Pressable
+              key={g.id}
+              onPress={() =>
+                setFilterGroupId(filterGroupId === g.id ? null : g.id)
+              }
+              style={({ pressed }) => [
+                styles.chip,
+                {
+                  backgroundColor:
+                    filterGroupId === g.id
+                      ? withAlpha(g.color, 0.12)
+                      : theme.cardBg,
+                  borderColor: filterGroupId === g.id ? g.color : theme.border,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+            >
+              <View style={[styles.catDot, { backgroundColor: g.color }]} />
+              <Text style={[styles.chipText, { color: theme.text }]}>
+                {g.name}
+              </Text>
+            </Pressable>
+          ))}
+          {categories.map((cat) => (
+            <Pressable
+              key={cat.id}
+              onPress={() =>
+                setFilterCategoryId(filterCategoryId === cat.id ? null : cat.id)
+              }
+              style={({ pressed }) => [
+                styles.chip,
+                {
+                  backgroundColor:
+                    filterCategoryId === cat.id
+                      ? withAlpha(cat.color, 0.1)
+                      : theme.cardBg,
+                  borderColor:
+                    filterCategoryId === cat.id ? cat.color : theme.border,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+            >
+              <View style={[styles.catDot, { backgroundColor: cat.color }]} />
+              <Text style={[styles.chipText, { color: theme.text }]}>
+                {cat.name}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
 
       {/* Task list */}
       <SectionList
@@ -359,7 +629,17 @@ export default function TasksScreen() {
         renderItem={renderItem}
         removeClippedSubviews={true}
         renderSectionHeader={({ section }: { section: TaskSection }) => (
-          <Text style={[styles.sectionHeader, { color: section.section === 'overdue' ? theme.danger : theme.secondaryText }]}>
+          <Text
+            style={[
+              styles.sectionHeader,
+              {
+                color:
+                  section.section === "overdue"
+                    ? theme.danger
+                    : theme.secondaryText,
+              },
+            ]}
+          >
             {section.title}
           </Text>
         )}
@@ -370,9 +650,17 @@ export default function TasksScreen() {
         stickySectionHeadersEnabled={false}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
-            <Ionicons name="checkmark-circle-outline" size={48} color={theme.border} />
-            <Text style={[styles.empty, { color: theme.secondaryText }]}>{t('tasks.empty')}</Text>
-            <Text style={[styles.emptyHint, { color: theme.secondaryText }]}>{t('tasks.emptyHint')}</Text>
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={48}
+              color={theme.border}
+            />
+            <Text style={[styles.empty, { color: theme.secondaryText }]}>
+              {t("tasks.empty")}
+            </Text>
+            <Text style={[styles.emptyHint, { color: theme.secondaryText }]}>
+              {t("tasks.emptyHint")}
+            </Text>
           </View>
         }
       />
@@ -382,20 +670,29 @@ export default function TasksScreen() {
         onPress={() => setShowAddForm(true)}
         style={[
           styles.fab,
-          { backgroundColor: theme.primary, bottom: insets.bottom + spacing.tabBarOffset },
+          {
+            backgroundColor: theme.primary,
+            bottom: insets.bottom + spacing.tabBarOffset,
+          },
           shadow.lg,
         ]}
       >
         <Ionicons name="add" size={28} color="#FFFFFF" />
       </Pressable>
 
-      <AddTaskForm visible={showAddForm} onClose={() => setShowAddForm(false)} />
+      <AddTaskForm
+        visible={showAddForm}
+        onClose={() => setShowAddForm(false)}
+      />
       <TaskDetailModal
         todo={selectedTodo}
         visible={!!selectedTodo}
         onClose={() => setSelectedTodo(null)}
       />
-      <GroupManageSheet visible={showGroupManage} onClose={() => setShowGroupManage(false)} />
+      <GroupManageSheet
+        visible={showGroupManage}
+        onClose={() => setShowGroupManage(false)}
+      />
       <AdBanner />
     </View>
   );
@@ -413,12 +710,12 @@ const styles = StyleSheet.create({
   chipContent: {
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.xs,
     paddingHorizontal: spacing.md - 4,
     paddingVertical: spacing.xs + 2,
@@ -428,12 +725,12 @@ const styles = StyleSheet.create({
   },
   chipText: {
     ...typography.caption,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   chipDivider: {
     width: 1,
     height: 20,
-    alignSelf: 'center',
+    alignSelf: "center",
     marginHorizontal: spacing.xs,
   },
   catDot: {
@@ -447,30 +744,30 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   emptyWrap: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: spacing.xl * 2,
     gap: spacing.md,
   },
   empty: {
-    textAlign: 'center',
+    textAlign: "center",
     ...typography.body,
   },
   emptyHint: {
     fontSize: 13,
-    textAlign: 'center',
+    textAlign: "center",
   },
   fab: {
-    position: 'absolute',
+    position: "absolute",
     right: spacing.md + 4,
     width: 56,
     height: 56,
     borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   groupBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.xs,
     paddingHorizontal: spacing.sm + 2,
     paddingVertical: spacing.xs + 1,
@@ -479,17 +776,17 @@ const styles = StyleSheet.create({
   },
   groupBtnText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
   },
   selectionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
     marginBottom: spacing.sm,
@@ -498,10 +795,50 @@ const styles = StyleSheet.create({
   },
   selectionBarCount: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   selectionBarAction: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
+  },
+});
+
+const weekStripStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: spacing.xs + 2,
+    marginBottom: spacing.xs,
+  },
+  cell: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
+  },
+  dayName: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  numWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayNum: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  dotRow: {
+    height: 5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
 });
